@@ -1,0 +1,43 @@
+<div
+  class="toast-container position-fixed bottom-0 end-0 p-3"
+  style="z-index: 1100"
+  aria-live="polite"
+  aria-atomic="true"
+>
+  @for (toast of toasts(); track toast.id) {
+    <div
+      class="toast show align-items-center text-bg-{{ toast.type }} border-0 mb-2 shadow"
+      role="alert"
+    >
+      <div class="d-flex">
+        <div class="toast-body">
+          <div class="fw-bold d-flex align-items-center gap-1">
+            @switch (toast.type) {
+              @case ('success') {
+                <i class="bi bi-check-circle-fill"></i>
+              }
+              @case ('danger') {
+                <i class="bi bi-exclamation-triangle-fill"></i>
+              }
+              @case ('warning') {
+                <i class="bi bi-exclamation-diamond-fill"></i>
+              }
+              @default {
+                <i class="bi bi-info-circle-fill"></i>
+              }
+            }
+            {{ toast.title }}
+          </div>
+          <div class="small mt-1">{{ toast.message }}</div>
+        </div>
+        <button
+          type="button"
+          class="btn-close btn-close-white me-2 m-auto"
+          (click)="notificationService.dismiss(toast.id)"
+          aria-label="Close"
+        ></button>
+      </div>
+    </div>
+  }
+</div>
+

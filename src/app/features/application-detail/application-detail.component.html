@@ -1,0 +1,583 @@
+<div class="container-fluid px-3 px-lg-4 py-4">
+  @if (isLoading()) {
+    <div class="p-5 text-center">
+      <div class="spinner-border text-primary" role="status"></div>
+      <div class="mt-2 text-muted">Loading application records...</div>
+    </div>
+  } @else if (application(); as app) {
+    <!-- Breadcrumb & Back -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <a routerLink="/dashboard" class="text-decoration-none text-muted small d-inline-flex align-items-center gap-1">
+        <i class="bi bi-arrow-left"></i> Back to Applications Dashboard
+      </a>
+
+      <!-- Role-based Indicator -->
+      <div class="small text-muted d-flex align-items-center gap-2">
+        <span>Active Viewing Role:</span>
+        <span
+          class="badge"
+          [class.bg-primary]="authService.currentRole() === 'SALES'"
+          [class.bg-warning]="authService.currentRole() === 'REVIEWER'"
+          [class.text-dark]="authService.currentRole() === 'REVIEWER'"
+          [class.bg-danger]="authService.currentRole() === 'ADMIN'"
+        >
+          {{ authService.currentRole() }}
+        </span>
+      </div>
+    </div>
+
+    <!-- Application Summary Header Card -->
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-body p-4">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3">
+          <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+              <h2 class="h4 fw-bold mb-0 text-dark">{{ app.businessDetails.legalName }}</h2>
+              <span class="badge bg-light text-primary border font-monospace">{{ app.applicationNumber }}</span>
+            </div>
+            <div class="text-muted small">
+              @if (app.businessDetails.dbaName) {
+                <span>DBA: {{ app.businessDetails.dbaName }} • </span>
+              }
+              <span>Created {{ app.createdAt | date: 'mediumDate' }} by {{ app.salesRepName }}</span>
+            </div>
+          </div>
+
+          <div class="d-flex flex-wrap align-items-center gap-2">
+            <!-- Status Badge -->
+            @switch (app.status) {
+              @case ('DRAFT') {
+                <span class="badge bg-secondary-subtle text-secondary border px-3 py-2 fs-7">
+                  <i class="bi bi-pencil-square me-1"></i> Draft
+                </span>
+              }
+              @case ('SUBMITTED') {
+                <span class="badge bg-info-subtle text-info border px-3 py-2 fs-7">
+                  <i class="bi bi-send-check me-1"></i> Submitted
+                </span>
+              }
+              @case ('UNDER_REVIEW') {
+                <span class="badge bg-warning-subtle text-warning-emphasis border px-3 py-2 fs-7">
+                  <i class="bi bi-hourglass-split me-1"></i> Under Review
+                </span>
+              }
+              @case ('INFO_REQUESTED') {
+                <span class="badge bg-danger-subtle text-danger border px-3 py-2 fs-7">
+                  <i class="bi bi-question-circle me-1"></i> Info Requested
+                </span>
+              }
+              @case ('APPROVED') {
+                <span class="badge bg-success-subtle text-success border px-3 py-2 fs-7">
+                  <i class="bi bi-check-circle-fill me-1"></i> Approved
+                </span>
+              }
+              @case ('REJECTED') {
+                <span class="badge bg-dark-subtle text-dark border px-3 py-2 fs-7">
+                  <i class="bi bi-x-circle-fill me-1"></i> Rejected
+                </span>
+              }
+            }
+
+            <!-- Risk Badge -->
+            <span
+              class="badge px-3 py-2 fs-7"
+              [class.bg-success]="app.riskTier === 'LOW'"
+              [class.bg-warning]="app.riskTier === 'MEDIUM'"
+              [class.text-dark]="app.riskTier === 'MEDIUM'"
+              [class.bg-danger]="app.riskTier === 'HIGH'"
+            >
+              <i class="bi bi-shield-fill me-1"></i> {{ app.riskTier }} Risk
+            </span>
+
+            <!-- Admin Reassign Button -->
+            <div *appHasRole="'ADMIN'">
+              <button
+                type="button"
+                class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1"
+                data-bs-toggle="modal"
+                data-bs-target="#reassignModal"
+              >
+                <i class="bi bi-person-gear"></i>
+                <span>Reassign Reviewer</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Navigation Tabs -->
+      <div class="card-footer bg-white border-top p-0 px-3">
+        <ul class="nav nav-tabs border-0">
+          <li class="nav-item">
+            <button
+              class="nav-link"
+              [class.active]="activeTab() === 'profile'"
+              (click)="activeTab.set('profile')"
+            >
+              <i class="bi bi-building me-1"></i> Business Profile
+            </button>
+          </li>
+          <li class="nav-item">
+            <button
+              class="nav-link"
+              [class.active]="activeTab() === 'owners'"
+              (click)="activeTab.set('owners')"
+            >
+              <i class="bi bi-people me-1"></i> Beneficial Owners
+            </button>
+          </li>
+          <li class="nav-item">
+            <button
+              class="nav-link"
+              [class.active]="activeTab() === 'banking'"
+              (click)="activeTab.set('banking')"
+            >
+              <i class="bi bi-bank me-1"></i> Banking & Settlement
+            </button>
+          </li>
+          <li class="nav-item">
+            <button
+              class="nav-link"
+              [class.active]="activeTab() === 'processing'"
+              (click)="activeTab.set('processing')"
+            >
+              <i class="bi bi-graph-up me-1"></i> Processing & Risk Decision
+            </button>
+          </li>
+          <li class="nav-item">
+            <button
+              class="nav-link"
+              [class.active]="activeTab() === 'history'"
+              (click)="activeTab.set('history')"
+            >
+              <i class="bi bi-clock-history me-1"></i> Audit History ({{ app.history.length }})
+            </button>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- SALES Notice Banner -->
+    @if (authService.currentRole() === 'SALES') {
+      <div class="alert alert-primary border-0 d-flex align-items-center gap-2 mb-4">
+        <i class="bi bi-info-circle-fill fs-5"></i>
+        <div class="small">
+          <strong>Sales Representative View:</strong> You are viewing application details permitted for sales rep {{ app.salesRepName }}. Risk decision controls and raw PII unmasking are restricted to Underwriting Reviewers.
+        </div>
+      </div>
+    }
+
+    <!-- TAB 1: BUSINESS PROFILE -->
+    @if (activeTab() === 'profile') {
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body p-4">
+          <h5 class="fw-bold mb-4">Entity Details & Location</h5>
+          <div class="row g-4">
+            <div class="col-12 col-md-4">
+              <div class="text-muted small">Legal Business Name</div>
+              <div class="fw-semibold">{{ app.businessDetails.legalName }}</div>
+            </div>
+
+            <div class="col-12 col-md-4">
+              <div class="text-muted small">Doing Business As (DBA)</div>
+              <div class="fw-semibold">{{ app.businessDetails.dbaName || 'None' }}</div>
+            </div>
+
+            <!-- Sensitive Tax ID with Role-Based Masking -->
+            <div class="col-12 col-md-4">
+              <div class="text-muted small mb-1">
+                Tax ID / EIN <span class="badge bg-danger-subtle text-danger ms-1">Sensitive</span>
+              </div>
+              <app-masked-field
+                [value]="app.businessDetails.taxId"
+                [label]="'Tax ID / EIN'"
+                [fieldType]="'TAX_ID_EIN'"
+                [applicationId]="app.id"
+                [applicationNumber]="app.applicationNumber"
+              ></app-masked-field>
+            </div>
+
+            <div class="col-12 col-md-4">
+              <div class="text-muted small">Business Entity Type</div>
+              <div class="fw-semibold">{{ app.businessDetails.businessType }}</div>
+            </div>
+
+            <div class="col-12 col-md-4">
+              <div class="text-muted small">Incorporation Date</div>
+              <div class="fw-semibold">{{ app.businessDetails.incorporationDate | date: 'longDate' }}</div>
+            </div>
+
+            <div class="col-12 col-md-4">
+              <div class="text-muted small">Industry Classification</div>
+              <div class="fw-semibold">{{ app.businessDetails.industryCategory }}</div>
+            </div>
+
+            <div class="col-12 col-md-4">
+              <div class="text-muted small">Company Website</div>
+              <div class="fw-semibold">
+                <a [href]="app.businessDetails.websiteUrl" target="_blank" rel="noopener noreferrer">
+                  {{ app.businessDetails.websiteUrl }} <i class="bi bi-box-arrow-up-right small"></i>
+                </a>
+              </div>
+            </div>
+
+            <div class="col-12 col-md-4">
+              <div class="text-muted small">Business Telephone</div>
+              <div class="fw-semibold">{{ app.businessDetails.phone }}</div>
+            </div>
+
+            <div class="col-12 col-md-4">
+              <div class="text-muted small">Physical Operating Address</div>
+              <div class="fw-semibold">
+                {{ app.businessDetails.address.street }}
+                @if (app.businessDetails.address.unit) {
+                  , {{ app.businessDetails.address.unit }}
+                }
+                <br />
+                {{ app.businessDetails.address.city }}, {{ app.businessDetails.address.state }} {{ app.businessDetails.address.postalCode }}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- TAB 2: BENEFICIAL OWNERS -->
+    @if (activeTab() === 'owners') {
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body p-4">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="fw-bold mb-0">Beneficial Ownership & Key Controllers</h5>
+            <span class="badge bg-success-subtle text-success">FinCEN CDD Rule Compliant</span>
+          </div>
+
+          <div class="row g-3">
+            @for (owner of app.beneficialOwners; track owner.id) {
+              <div class="col-12 col-md-6">
+                <div class="card bg-light border p-3 rounded-3 h-100">
+                  <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div>
+                      <h6 class="fw-bold mb-0">{{ owner.fullName }}</h6>
+                      <div class="small text-muted">{{ owner.title }}</div>
+                    </div>
+                    <span class="badge bg-primary fs-7">{{ owner.ownershipPercentage }}% Equity</span>
+                  </div>
+
+                  <hr class="my-2" />
+
+                  <div class="small">
+                    <div class="d-flex justify-content-between py-1">
+                      <span class="text-muted">Contact Email:</span>
+                      <span class="fw-semibold">{{ owner.email }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between py-1">
+                      <span class="text-muted">Date of Birth:</span>
+                      <span class="fw-semibold">{{ owner.dateOfBirth | date: 'mediumDate' }}</span>
+                    </div>
+
+                    <!-- Sensitive SSN with Masked Component -->
+                    <div class="d-flex justify-content-between align-items-center py-1">
+                      <span class="text-muted">Govt ID / SSN:</span>
+                      <app-masked-field
+                        [value]="owner.ssn"
+                        [label]="'Owner SSN'"
+                        [fieldType]="'BENEFICIAL_OWNER_SSN'"
+                        [applicationId]="app.id"
+                        [applicationNumber]="app.applicationNumber"
+                      ></app-masked-field>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- TAB 3: BANKING & SETTLEMENT -->
+    @if (activeTab() === 'banking') {
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body p-4">
+          <h5 class="fw-bold mb-4">Settlement Depository Credentials</h5>
+
+          <div class="row g-4">
+            <div class="col-12 col-md-6">
+              <div class="text-muted small">Depository Financial Institution</div>
+              <div class="fw-semibold fs-5">{{ app.bankingDetails.bankName }}</div>
+            </div>
+
+            <div class="col-12 col-md-6">
+              <div class="text-muted small">Account Holder Name</div>
+              <div class="fw-semibold fs-5">{{ app.bankingDetails.accountHolderName }}</div>
+            </div>
+
+            <!-- Sensitive ABA Routing Number -->
+            <div class="col-12 col-md-6">
+              <div class="text-muted small mb-1">
+                ABA Routing Transit Number <span class="badge bg-danger-subtle text-danger ms-1">Sensitive</span>
+              </div>
+              <app-masked-field
+                [value]="app.bankingDetails.routingNumber"
+                [label]="'ABA Routing'"
+                [fieldType]="'BANK_ROUTING_NUMBER'"
+                [applicationId]="app.id"
+                [applicationNumber]="app.applicationNumber"
+              ></app-masked-field>
+              <div class="form-text small mt-1">Federal Reserve Routing check passed.</div>
+            </div>
+
+            <!-- Sensitive Account Number -->
+            <div class="col-12 col-md-6">
+              <div class="text-muted small mb-1">
+                Bank Account Number <span class="badge bg-danger-subtle text-danger ms-1">Sensitive</span>
+              </div>
+              <app-masked-field
+                [value]="app.bankingDetails.accountNumber"
+                [label]="'Bank Account Number'"
+                [fieldType]="'BANK_ACCOUNT_NUMBER'"
+                [applicationId]="app.id"
+                [applicationNumber]="app.applicationNumber"
+              ></app-masked-field>
+              <div class="form-text small mt-1">Encrypted depository account.</div>
+            </div>
+
+            <div class="col-12 col-md-6">
+              <div class="text-muted small">Account Depository Type</div>
+              <div class="fw-semibold">{{ app.bankingDetails.accountType }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- TAB 4: PROCESSING & RISK DECISION CONTROLS -->
+    @if (activeTab() === 'processing') {
+      <div class="row g-4">
+        <!-- Processing Profile Card -->
+        <div class="col-12 col-lg-7">
+          <div class="card border-0 shadow-sm h-100">
+            <div class="card-body p-4">
+              <h5 class="fw-bold mb-4">Processing Profile & Velocity Limits</h5>
+
+              <div class="row g-3">
+                <div class="col-12 col-sm-6">
+                  <div class="text-muted small">Estimated Monthly Volume</div>
+                  <div class="h4 fw-bold font-monospace text-primary">
+                    ${{ (app.processingProfile.estimatedMonthlyVolume || 0) | number }}
+                  </div>
+                </div>
+
+                <div class="col-6 col-sm-3">
+                  <div class="text-muted small">Avg Ticket</div>
+                  <div class="fw-bold font-monospace">${{ app.processingProfile.averageTicketSize }}</div>
+                </div>
+
+                <div class="col-6 col-sm-3">
+                  <div class="text-muted small">Max Ticket</div>
+                  <div class="fw-bold font-monospace">${{ app.processingProfile.maximumTicketSize }}</div>
+                </div>
+
+                <div class="col-12 col-sm-6">
+                  <div class="text-muted small">Primary Currency</div>
+                  <div class="fw-semibold">{{ app.processingProfile.primaryCurrency }}</div>
+                </div>
+
+                <div class="col-12 col-sm-6">
+                  <div class="text-muted small">Chargeback Ratio History</div>
+                  <div class="fw-semibold">{{ app.processingProfile.chargebackRatioHistory }}</div>
+                </div>
+
+                <div class="col-12 mt-3">
+                  <div class="p-3 rounded-3 border" [class.bg-danger-subtle]="app.processingProfile.isHighRiskIndustry" [class.bg-light]="!app.processingProfile.isHighRiskIndustry">
+                    <div class="d-flex align-items-center gap-2 mb-1">
+                      <i class="bi" [class.bi-shield-slash-fill]="app.processingProfile.isHighRiskIndustry" [class.bi-shield-check-fill]="!app.processingProfile.isHighRiskIndustry"></i>
+                      <strong class="fw-bold">
+                        {{ app.processingProfile.isHighRiskIndustry ? 'High-Risk Industry Category Flagged' : 'Standard Low-Risk Category' }}
+                      </strong>
+                    </div>
+
+                    @if (app.processingProfile.isHighRiskIndustry) {
+                      <div class="small mt-2">
+                        <div><strong>Category:</strong> {{ app.processingProfile.highRiskCategory }}</div>
+                        <div class="mt-1"><strong>Explanation:</strong> {{ app.processingProfile.highRiskExplanation }}</div>
+                      </div>
+                    }
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Reviewer Decision Panel (HIDDEN FROM SALES USERS) -->
+        <div class="col-12 col-lg-5">
+          <div *appHasRole="['REVIEWER', 'ADMIN']" class="card border-0 shadow-sm border-start border-primary border-4 h-100">
+            <div class="card-header bg-white py-3">
+              <h5 class="fw-bold mb-0 text-primary">
+                <i class="bi bi-shield-check me-1"></i> Record Risk Underwriting Decision
+              </h5>
+              <div class="small text-muted">Controlled decision console for Reviewers & Admins.</div>
+            </div>
+
+            <div class="card-body p-4">
+              <!-- Decision Action -->
+              <div class="mb-3">
+                <label class="form-label fw-semibold small">Underwriting Action <span class="text-danger">*</span></label>
+                <div class="btn-group w-100" role="group">
+                  <input
+                    type="radio"
+                    class="btn-check"
+                    name="decisionRadio"
+                    id="decApprove"
+                    value="APPROVE"
+                    [(ngModel)]="decisionType"
+                  />
+                  <label class="btn btn-outline-success btn-sm" for="decApprove">Approve</label>
+
+                  <input
+                    type="radio"
+                    class="btn-check"
+                    name="decisionRadio"
+                    id="decInfo"
+                    value="REQUEST_INFO"
+                    [(ngModel)]="decisionType"
+                  />
+                  <label class="btn btn-outline-warning btn-sm" for="decInfo">Need Info</label>
+
+                  <input
+                    type="radio"
+                    class="btn-check"
+                    name="decisionRadio"
+                    id="decReject"
+                    value="REJECT"
+                    [(ngModel)]="decisionType"
+                  />
+                  <label class="btn btn-outline-danger btn-sm" for="decReject">Decline</label>
+                </div>
+              </div>
+
+              <!-- Risk Tier Override -->
+              <div class="mb-3">
+                <label class="form-label fw-semibold small">Assigned Risk Tier</label>
+                <select class="form-select form-select-sm" [(ngModel)]="decisionRiskTier">
+                  <option value="LOW">Low Risk</option>
+                  <option value="MEDIUM">Medium Risk</option>
+                  <option value="HIGH">High Risk</option>
+                </select>
+              </div>
+
+              <!-- Settlement Conditions (If Approved) -->
+              @if (decisionType === 'APPROVE') {
+                <div class="mb-3">
+                  <label class="form-label fw-semibold small">Settlement Conditions</label>
+                  <input
+                    type="text"
+                    class="form-control form-control-sm"
+                    [(ngModel)]="decisionConditions"
+                    placeholder="e.g. Standard 2-day payout, or 5% rolling reserve"
+                  />
+                </div>
+              }
+
+              <!-- Reviewer Justification Notes -->
+              <div class="mb-3">
+                <label class="form-label fw-semibold small">
+                  Underwriter Notes / Reason
+                  @if (decisionType === 'REJECT' || decisionType === 'REQUEST_INFO') {
+                    <span class="text-danger">* (Required)</span>
+                  }
+                </label>
+                <textarea
+                  class="form-control form-control-sm"
+                  rows="3"
+                  [(ngModel)]="decisionNotes"
+                  placeholder="Record underwriting rationale, document verification findings..."
+                ></textarea>
+              </div>
+
+              <button
+                type="button"
+                class="btn btn-primary w-100 d-flex align-items-center justify-content-center gap-2"
+                [disabled]="isDecisionSubmitting()"
+                (click)="submitDecision()"
+              >
+                @if (isDecisionSubmitting()) {
+                  <span class="spinner-border spinner-border-sm" role="status"></span>
+                  <span>Saving Decision...</span>
+                } @else {
+                  <i class="bi bi-check2-circle"></i>
+                  <span>Commit Underwriting Decision</span>
+                }
+              </button>
+            </div>
+          </div>
+
+          <!-- Notice when Sales Views This Section -->
+          @if (authService.currentRole() === 'SALES') {
+            <div class="card border-0 shadow-sm bg-light text-center p-4">
+              <i class="bi bi-shield-lock text-muted fs-1 mb-2"></i>
+              <h6 class="fw-bold">Risk Decision Console Restricted</h6>
+              <p class="small text-muted mb-0">
+                Only authenticated REVIEWER and ADMIN users may record underwriting decisions, set reserves, or decline applications.
+              </p>
+            </div>
+          }
+        </div>
+      </div>
+    }
+
+    <!-- TAB 5: AUDIT HISTORY -->
+    @if (activeTab() === 'history') {
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body p-4">
+          <h5 class="fw-bold mb-4">Application History & Audit Trail</h5>
+
+          <div class="timeline">
+            @for (item of app.history; track item.id) {
+              <div class="timeline-item pb-4 position-relative ps-4 border-start">
+                <div class="timeline-dot bg-primary position-absolute rounded-circle"></div>
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                  <div class="fw-bold text-dark">{{ item.action }}</div>
+                  <div class="small text-muted">{{ item.timestamp | date: 'medium' }}</div>
+                </div>
+                <div class="small text-muted">Performed by: <strong class="text-dark">{{ item.userName }}</strong></div>
+                @if (item.details) {
+                  <div class="small mt-1 p-2 bg-light rounded text-secondary">
+                    {{ item.details }}
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- ADMIN REASSIGN MODAL -->
+    <div class="modal fade" id="reassignModal" tabindex="-1" aria-labelledby="reassignModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title fw-bold" id="reassignModalLabel">Reassign Application Reviewer</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <label class="form-label small fw-semibold">Select Underwriting Reviewer</label>
+            <select class="form-select" [(ngModel)]="selectedReviewerId">
+              <option value="usr_reviewer_02">Marcus Vance (Senior Risk Reviewer)</option>
+              <option value="usr_reviewer_pool">Senior Underwriter Pool</option>
+            </select>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="button" class="btn btn-sm btn-primary" data-bs-dismiss="modal" (click)="reassignReviewer()">
+              Save Assignment
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+</div>
+

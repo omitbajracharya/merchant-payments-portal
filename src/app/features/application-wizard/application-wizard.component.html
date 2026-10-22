@@ -1,0 +1,745 @@
+<div class="container py-4">
+  <!-- Draft Alert Banner -->
+  @if (draftBannerVisible()) {
+    <div class="alert alert-info border-0 shadow-sm d-flex align-items-center justify-content-between p-3 mb-4 rounded-3">
+      <div class="d-flex align-items-center gap-2">
+        <i class="bi bi-clock-history fs-4 text-info"></i>
+        <div>
+          <div class="fw-bold">Unfinished Draft Found</div>
+          <div class="small">You have an auto-saved application draft from a previous session. Would you like to resume?</div>
+        </div>
+      </div>
+      <div class="d-flex gap-2">
+        <button type="button" class="btn btn-sm btn-info text-white fw-semibold" (click)="resumeSavedDraft()">
+          Resume Draft
+        </button>
+        <button type="button" class="btn btn-sm btn-outline-secondary" (click)="discardDraft()">
+          Discard
+        </button>
+      </div>
+    </div>
+  }
+
+  <!-- Header & Auto-Save Status Bar -->
+  <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-4">
+    <div>
+      <a routerLink="/dashboard" class="text-decoration-none text-muted small d-inline-flex align-items-center gap-1 mb-1">
+        <i class="bi bi-arrow-left"></i> Back to Dashboard
+      </a>
+      <h1 class="h3 fw-bold mb-0 text-dark">
+        {{ editingAppId() ? 'Edit Merchant Application' : 'New Merchant Application' }}
+      </h1>
+    </div>
+
+    <!-- Auto-Save Status Pill -->
+    <div class="d-flex align-items-center gap-2">
+      <div class="auto-save-pill px-3 py-1 rounded-pill border d-flex align-items-center gap-2">
+        @switch (autoSaveStatus()) {
+          @case ('saving') {
+            <span class="spinner-border spinner-border-sm text-primary" role="status"></span>
+            <span class="small text-muted">Saving draft...</span>
+          }
+          @case ('saved') {
+            <i class="bi bi-cloud-check-fill text-success fs-6"></i>
+            <span class="small text-muted">
+              Auto-saved at {{ lastSavedTime() | date: 'mediumTime' }}
+            </span>
+          }
+          @case ('error') {
+            <i class="bi bi-cloud-slash-fill text-danger fs-6"></i>
+            <span class="small text-danger fw-semibold">Auto-save failed</span>
+            <button type="button" class="btn btn-link btn-sm p-0 text-danger" (click)="autoSaveService.retry()">
+              Retry
+            </button>
+          }
+          @default {
+            <i class="bi bi-cloud text-secondary fs-6"></i>
+            <span class="small text-muted">Draft sync active</span>
+          }
+        }
+      </div>
+
+      <button
+        type="button"
+        class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1"
+        (click)="autoSaveService.saveNow()"
+        title="Force manual save now"
+      >
+        <i class="bi bi-save"></i>
+        <span>Save Now</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Stepper Navigation Header -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-body p-3">
+      <div class="row g-2 stepper-row">
+        @for (s of stepTitles; track s.number) {
+          <div class="col">
+            <button
+              type="button"
+              class="stepper-tab w-100 text-start border-0 bg-transparent p-2 rounded"
+              [class.active]="currentStep() === s.number"
+              [class.completed]="isStepValid(s.number) && currentStep() > s.number"
+              (click)="goToStep(s.number)"
+            >
+              <div class="d-flex align-items-center gap-2">
+                <div class="step-badge rounded-circle d-flex align-items-center justify-content-center">
+                  @if (isStepValid(s.number) && currentStep() > s.number) {
+                    <i class="bi bi-check-lg text-white"></i>
+                  } @else {
+                    <span>{{ s.number }}</span>
+                  }
+                </div>
+                <div class="d-none d-md-block lh-sm">
+                  <div class="fw-semibold step-title">{{ s.title }}</div>
+                  <div class="small text-muted step-sub">{{ s.subtitle }}</div>
+                </div>
+              </div>
+            </button>
+          </div>
+        }
+      </div>
+    </div>
+  </div>
+
+  <!-- Form Body -->
+  <form [formGroup]="wizardForm" (ngSubmit)="submitApplication()">
+    <!-- ========================================== -->
+    <!-- STEP 1: BUSINESS PROFILE -->
+    <!-- ========================================== -->
+    @if (currentStep() === 1) {
+      <div class="card border-0 shadow-sm mb-4" formGroupName="businessDetails">
+        <div class="card-header bg-white py-3">
+          <h5 class="card-title fw-bold mb-0">Step 1: Business Details & Company Profile</h5>
+          <p class="text-muted small mb-0">Provide legal entity identifiers and verified physical location.</p>
+        </div>
+        <div class="card-body p-4">
+          <div class="row g-3">
+            <!-- Legal Name -->
+            <div class="col-12 col-md-6">
+              <label class="form-label fw-semibold">Legal Business Name <span class="text-danger">*</span></label>
+              <input
+                type="text"
+                class="form-control"
+                formControlName="legalName"
+                placeholder="e.g. Apex Mountain Goods LLC"
+                [class.is-invalid]="wizardForm.get('businessDetails.legalName')?.touched && wizardForm.get('businessDetails.legalName')?.invalid"
+              />
+              @if (wizardForm.get('businessDetails.legalName')?.touched && wizardForm.get('businessDetails.legalName')?.errors; as errs) {
+                <div class="invalid-feedback">
+                  @if (errs['required']) { Legal business name is required. }
+                  @if (errs['minlength']) { Minimum 2 characters required. }
+                </div>
+              }
+            </div>
+
+            <!-- DBA Name -->
+            <div class="col-12 col-md-6">
+              <label class="form-label fw-semibold">Doing Business As (DBA) <span class="text-muted fw-normal">(Optional)</span></label>
+              <input
+                type="text"
+                class="form-control"
+                formControlName="dbaName"
+                placeholder="Trade name if different from legal name"
+              />
+            </div>
+
+            <!-- Tax ID / EIN -->
+            <div class="col-12 col-md-6">
+              <label class="form-label fw-semibold">Tax ID / EIN (9-digit) <span class="text-danger">*</span></label>
+              <input
+                type="text"
+                class="form-control font-monospace"
+                formControlName="taxId"
+                placeholder="XX-XXXXXXX"
+                [class.is-invalid]="wizardForm.get('businessDetails.taxId')?.touched && wizardForm.get('businessDetails.taxId')?.invalid"
+              />
+              <div class="form-text small">US Federal Taxpayer Identification Number format.</div>
+              @if (wizardForm.get('businessDetails.taxId')?.touched && wizardForm.get('businessDetails.taxId')?.errors; as errs) {
+                <div class="invalid-feedback">
+                  @if (errs['required']) { Tax ID / EIN is required. }
+                  @if (errs['invalidEin']) { Format must be XX-XXXXXXX or 9 digits. }
+                  @if (errs['invalidEinPrefix']) { EIN prefix cannot be 00. }
+                </div>
+              }
+            </div>
+
+            <!-- Business Entity Type -->
+            <div class="col-12 col-md-6">
+              <label class="form-label fw-semibold">Entity Type <span class="text-danger">*</span></label>
+              <select class="form-select" formControlName="businessType">
+                <option value="LLC">Limited Liability Company (LLC)</option>
+                <option value="CORPORATION">Corporation (C-Corp / S-Corp)</option>
+                <option value="PARTNERSHIP">Partnership</option>
+                <option value="SOLE_PROPRIETORSHIP">Sole Proprietorship</option>
+              </select>
+            </div>
+
+            <!-- Incorporation Date -->
+            <div class="col-12 col-md-6">
+              <label class="form-label fw-semibold">Incorporation / Formation Date <span class="text-danger">*</span></label>
+              <input
+                type="date"
+                class="form-control"
+                formControlName="incorporationDate"
+                [class.is-invalid]="wizardForm.get('businessDetails.incorporationDate')?.touched && wizardForm.get('businessDetails.incorporationDate')?.invalid"
+              />
+              @if (wizardForm.get('businessDetails.incorporationDate')?.touched && wizardForm.get('businessDetails.incorporationDate')?.invalid) {
+                <div class="invalid-feedback">Valid formation date is required.</div>
+              }
+            </div>
+
+            <!-- Industry Category -->
+            <div class="col-12 col-md-6">
+              <label class="form-label fw-semibold">Industry Classification <span class="text-danger">*</span></label>
+              <select class="form-select" formControlName="industryCategory">
+                <option value="Retail - E-Commerce">Retail - E-Commerce & Consumer Goods</option>
+                <option value="Food & Beverage">Food & Beverage / Restaurant</option>
+                <option value="B2B SaaS / Software">B2B SaaS / Technology Solutions</option>
+                <option value="Professional Services">Professional & Legal Services</option>
+                <option value="Travel & Hospitality">Travel & Hospitality</option>
+                <option value="Digital Assets / Web3">Digital Assets / Web3 / Fintech</option>
+              </select>
+            </div>
+
+            <!-- Website -->
+            <div class="col-12 col-md-6">
+              <label class="form-label fw-semibold">Company Website URL <span class="text-danger">*</span></label>
+              <input
+                type="url"
+                class="form-control"
+                formControlName="websiteUrl"
+                placeholder="https://example.com"
+                [class.is-invalid]="wizardForm.get('businessDetails.websiteUrl')?.touched && wizardForm.get('businessDetails.websiteUrl')?.invalid"
+              />
+              @if (wizardForm.get('businessDetails.websiteUrl')?.touched && wizardForm.get('businessDetails.websiteUrl')?.invalid) {
+                <div class="invalid-feedback">Valid URL is required (e.g. https://domain.com).</div>
+              }
+            </div>
+
+            <!-- Phone -->
+            <div class="col-12 col-md-6">
+              <label class="form-label fw-semibold">Business Phone <span class="text-danger">*</span></label>
+              <input
+                type="tel"
+                class="form-control"
+                formControlName="phone"
+                placeholder="(555) 123-4567"
+                [class.is-invalid]="wizardForm.get('businessDetails.phone')?.touched && wizardForm.get('businessDetails.phone')?.invalid"
+              />
+              @if (wizardForm.get('businessDetails.phone')?.touched && wizardForm.get('businessDetails.phone')?.invalid) {
+                <div class="invalid-feedback">Valid 10-digit telephone number required.</div>
+              }
+            </div>
+
+            <!-- Address Group -->
+            <div class="col-12 mt-3" formGroupName="address">
+              <h6 class="fw-bold text-secondary mb-3">Principal Business Address</h6>
+              <div class="row g-3">
+                <div class="col-12 col-md-8">
+                  <label class="form-label small">Street Address <span class="text-danger">*</span></label>
+                  <input type="text" class="form-control form-control-sm" formControlName="street" placeholder="123 Financial Way" />
+                </div>
+                <div class="col-12 col-md-4">
+                  <label class="form-label small">Suite / Unit</label>
+                  <input type="text" class="form-control form-control-sm" formControlName="unit" placeholder="Suite 400" />
+                </div>
+                <div class="col-12 col-md-5">
+                  <label class="form-label small">City <span class="text-danger">*</span></label>
+                  <input type="text" class="form-control form-control-sm" formControlName="city" placeholder="San Francisco" />
+                </div>
+                <div class="col-6 col-md-3">
+                  <label class="form-label small">State (2-letter) <span class="text-danger">*</span></label>
+                  <input type="text" class="form-control form-control-sm text-uppercase" formControlName="state" maxlength="2" placeholder="CA" />
+                </div>
+                <div class="col-6 col-md-4">
+                  <label class="form-label small">Postal / ZIP Code <span class="text-danger">*</span></label>
+                  <input type="text" class="form-control form-control-sm" formControlName="postalCode" placeholder="94105" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- ========================================== -->
+    <!-- STEP 2: BENEFICIAL OWNERSHIP (DYNAMIC FORMARRAY) -->
+    <!-- ========================================== -->
+    @if (currentStep() === 2) {
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+          <div>
+            <h5 class="card-title fw-bold mb-0">Step 2: Beneficial Ownership & Directors</h5>
+            <p class="text-muted small mb-0">
+              FinCEN Customer Due Diligence (CDD) rule requires identifying any individual with 25%+ equity.
+            </p>
+          </div>
+          <button
+            type="button"
+            class="btn btn-sm btn-outline-primary d-flex align-items-center gap-1"
+            (click)="addBeneficialOwner()"
+          >
+            <i class="bi bi-person-plus-fill"></i>
+            <span>Add Owner</span>
+          </button>
+        </div>
+
+        <div class="card-body p-4">
+          <!-- Cross-Field Ownership Validation Alert -->
+          @if (beneficialOwners.errors; as errors) {
+            <div class="alert alert-warning border-0 d-flex align-items-center gap-2 mb-4">
+              <i class="bi bi-exclamation-triangle-fill fs-5 text-warning"></i>
+              <div>
+                @if (errors['totalOwnershipExceeded']) {
+                  <div class="fw-semibold">Ownership Exceeded:</div>
+                  <div class="small">
+                    Total declared equity is {{ errors['totalOwnershipExceeded'].currentTotal }}%, which exceeds 100%.
+                  </div>
+                }
+                @if (errors['missingSignificantOwner']) {
+                  <div class="fw-semibold">FinCEN 25% Threshold Missing:</div>
+                  <div class="small">
+                    At least one beneficial owner with 25% or greater ownership must be provided for underwriting KYC.
+                  </div>
+                }
+              </div>
+            </div>
+          }
+
+          <div formArrayName="beneficialOwners" class="d-flex flex-column gap-3">
+            @for (ownerGroup of beneficialOwners.controls; track $index) {
+              <div class="card bg-light border p-3 rounded-3" [formGroupName]="$index">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                  <div class="fw-bold d-flex align-items-center gap-2">
+                    <span class="badge bg-primary rounded-circle">{{ $index + 1 }}</span>
+                    <span>Owner #{{ $index + 1 }}</span>
+                    @if (ownerGroup.get('isPrimaryContact')?.value) {
+                      <span class="badge bg-success-subtle text-success">Primary Contact</span>
+                    }
+                  </div>
+
+                  @if (beneficialOwners.length > 1) {
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-outline-danger"
+                      (click)="removeBeneficialOwner($index)"
+                      title="Remove this owner"
+                    >
+                      <i class="bi bi-trash"></i> Remove
+                    </button>
+                  }
+                </div>
+
+                <div class="row g-3">
+                  <div class="col-12 col-md-5">
+                    <label class="form-label small fw-semibold">Full Legal Name <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control form-control-sm" formControlName="fullName" placeholder="David Sterling" />
+                  </div>
+                  <div class="col-12 col-md-4">
+                    <label class="form-label small fw-semibold">Title / Corporate Role <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control form-control-sm" formControlName="title" placeholder="Managing Member / CEO" />
+                  </div>
+                  <div class="col-12 col-md-3">
+                    <label class="form-label small fw-semibold">Equity Ownership % <span class="text-danger">*</span></label>
+                    <div class="input-group input-group-sm">
+                      <input type="number" class="form-control" formControlName="ownershipPercentage" min="1" max="100" />
+                      <span class="input-group-text">%</span>
+                    </div>
+                  </div>
+                  <div class="col-12 col-md-4">
+                    <label class="form-label small fw-semibold">SSN / Govt ID (9-digit) <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control form-control-sm font-monospace" formControlName="ssn" placeholder="XXX-XX-XXXX" />
+                    <div class="form-text small">Stored encrypted and masked per PCI-DSS.</div>
+                  </div>
+                  <div class="col-12 col-md-4">
+                    <label class="form-label small fw-semibold">Date of Birth <span class="text-danger">*</span></label>
+                    <input type="date" class="form-control form-control-sm" formControlName="dateOfBirth" />
+                  </div>
+                  <div class="col-12 col-md-4">
+                    <label class="form-label small fw-semibold">Email Address <span class="text-danger">*</span></label>
+                    <input type="email" class="form-control form-control-sm" formControlName="email" placeholder="owner@company.com" />
+                  </div>
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- ========================================== -->
+    <!-- STEP 3: BANKING & SETTLEMENT -->
+    <!-- ========================================== -->
+    @if (currentStep() === 3) {
+      <div class="card border-0 shadow-sm mb-4" formGroupName="bankingDetails">
+        <div class="card-header bg-white py-3">
+          <h5 class="card-title fw-bold mb-0">Step 3: Banking & Depository Settlement Account</h5>
+          <p class="text-muted small mb-0">Account where merchant daily transaction batches will be deposited.</p>
+        </div>
+        <div class="card-body p-4">
+          <!-- Cross-field Account Matching Error -->
+          @if (wizardForm.get('bankingDetails')?.errors?.['accountMismatch']) {
+            <div class="alert alert-danger border-0 d-flex align-items-center gap-2 mb-3">
+              <i class="bi bi-exclamation-octagon-fill"></i>
+              <div>Account Number and Confirmation Account Number do not match.</div>
+            </div>
+          }
+
+          <div class="row g-3">
+            <div class="col-12 col-md-6">
+              <label class="form-label fw-semibold">Depository Bank Name <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" formControlName="bankName" placeholder="e.g. JPMorgan Chase Bank" />
+            </div>
+
+            <div class="col-12 col-md-6">
+              <label class="form-label fw-semibold">Account Holder Name <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" formControlName="accountHolderName" placeholder="Must match Legal Entity Name" />
+            </div>
+
+            <div class="col-12 col-md-6">
+              <label class="form-label fw-semibold">
+                Routing Transit Number (ABA 9-digit) <span class="text-danger">*</span>
+              </label>
+              <input
+                type="text"
+                class="form-control font-monospace"
+                formControlName="routingNumber"
+                placeholder="011000015 or 121000358"
+                [class.is-invalid]="wizardForm.get('bankingDetails.routingNumber')?.touched && wizardForm.get('bankingDetails.routingNumber')?.invalid"
+              />
+              <div class="form-text small">Validated via official Federal Reserve modulus 10 weighted checksum.</div>
+              @if (wizardForm.get('bankingDetails.routingNumber')?.touched && wizardForm.get('bankingDetails.routingNumber')?.errors; as errs) {
+                <div class="invalid-feedback">
+                  @if (errs['required']) { Routing number is required. }
+                  @if (errs['routingNumberLength']) { ABA routing number must be exactly 9 digits. }
+                  @if (errs['invalidRoutingChecksum']) { Invalid ABA routing check digit. Please verify routing number. }
+                </div>
+              }
+            </div>
+
+            <div class="col-12 col-md-6">
+              <label class="form-label fw-semibold">Account Type <span class="text-danger">*</span></label>
+              <select class="form-select" formControlName="accountType">
+                <option value="CHECKING">Commercial Checking</option>
+                <option value="SAVINGS">Commercial Savings</option>
+              </select>
+            </div>
+
+            <div class="col-12 col-md-6">
+              <label class="form-label fw-semibold">Account Number <span class="text-danger">*</span></label>
+              <input
+                type="text"
+                class="form-control font-monospace"
+                formControlName="accountNumber"
+                placeholder="8 to 17 digits"
+                [class.is-invalid]="wizardForm.get('bankingDetails.accountNumber')?.touched && wizardForm.get('bankingDetails.accountNumber')?.invalid"
+              />
+            </div>
+
+            <div class="col-12 col-md-6">
+              <label class="form-label fw-semibold">Confirm Account Number <span class="text-danger">*</span></label>
+              <input
+                type="text"
+                class="form-control font-monospace"
+                formControlName="confirmAccountNumber"
+                placeholder="Re-enter account number"
+                [class.is-invalid]="wizardForm.get('bankingDetails.confirmAccountNumber')?.touched && wizardForm.get('bankingDetails')?.errors?.['accountMismatch']"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- ========================================== -->
+    <!-- STEP 4: PROCESSING PROFILE & RISK -->
+    <!-- ========================================== -->
+    @if (currentStep() === 4) {
+      <div class="card border-0 shadow-sm mb-4" formGroupName="processingProfile">
+        <div class="card-header bg-white py-3">
+          <h5 class="card-title fw-bold mb-0">Step 4: Processing Volume & Underwriting Risk Profile</h5>
+          <p class="text-muted small mb-0">Projected transaction velocity, average ticket size, and risk exposure.</p>
+        </div>
+        <div class="card-body p-4">
+          <!-- Cross-field Ticket Size Validator Error -->
+          @if (wizardForm.get('processingProfile')?.errors?.['maxTicketLessThanAverage']) {
+            <div class="alert alert-danger border-0 d-flex align-items-center gap-2 mb-3">
+              <i class="bi bi-exclamation-triangle-fill"></i>
+              <div>Maximum Ticket Size cannot be less than Average Ticket Size.</div>
+            </div>
+          }
+
+          <div class="row g-3">
+            <div class="col-12 col-md-4">
+              <label class="form-label fw-semibold">Estimated Monthly Volume ($) <span class="text-danger">*</span></label>
+              <div class="input-group">
+                <span class="input-group-text">$</span>
+                <input type="number" class="form-control" formControlName="estimatedMonthlyVolume" step="1000" />
+              </div>
+            </div>
+
+            <div class="col-12 col-md-4">
+              <label class="form-label fw-semibold">Average Ticket Size ($) <span class="text-danger">*</span></label>
+              <div class="input-group">
+                <span class="input-group-text">$</span>
+                <input type="number" class="form-control" formControlName="averageTicketSize" step="5" />
+              </div>
+            </div>
+
+            <div class="col-12 col-md-4">
+              <label class="form-label fw-semibold">Maximum Ticket Size ($) <span class="text-danger">*</span></label>
+              <div class="input-group">
+                <span class="input-group-text">$</span>
+                <input type="number" class="form-control" formControlName="maximumTicketSize" step="25" />
+              </div>
+            </div>
+
+            <div class="col-12 col-md-6">
+              <label class="form-label fw-semibold">Primary Processing Currency <span class="text-danger">*</span></label>
+              <select class="form-select" formControlName="primaryCurrency">
+                <option value="USD">USD - United States Dollar</option>
+                <option value="EUR">EUR - Euro</option>
+                <option value="GBP">GBP - British Pound</option>
+                <option value="CAD">CAD - Canadian Dollar</option>
+              </select>
+            </div>
+
+            <div class="col-12 col-md-6">
+              <label class="form-label fw-semibold">Historical Chargeback Ratio <span class="text-danger">*</span></label>
+              <select class="form-select" formControlName="chargebackRatioHistory">
+                <option value="<0.5%">&lt; 0.5% (Clean / Standard)</option>
+                <option value="0.5%-1%">0.5% - 1.0% (Moderate Risk)</option>
+                <option value=">1%">&gt; 1.0% (High Risk / Card Brand Monitoring)</option>
+              </select>
+            </div>
+
+            <!-- High Risk Toggle -->
+            <div class="col-12 mt-3">
+              <div class="form-check form-switch p-3 bg-light rounded-3 border">
+                <input
+                  class="form-check-input ms-0 me-3"
+                  type="checkbox"
+                  id="highRiskSwitch"
+                  formControlName="isHighRiskIndustry"
+                />
+                <label class="form-check-label fw-bold" for="highRiskSwitch">
+                  Merchant operates in a High-Risk Industry Category
+                </label>
+                <div class="small text-muted ms-4">
+                  Check if business sells crypto/web3, firearms, nutraceuticals, travel, adult, or continuity billing.
+                </div>
+              </div>
+            </div>
+
+            <!-- Dynamic Fields if High Risk is Checked -->
+            @if (wizardForm.get('processingProfile.isHighRiskIndustry')?.value) {
+              <div class="col-12 col-md-6">
+                <label class="form-label fw-semibold text-danger">High-Risk Industry Category <span class="text-danger">*</span></label>
+                <select class="form-select" formControlName="highRiskCategory">
+                  <option value="">Select category...</option>
+                  <option value="Crypto / Virtual Currency">Crypto / Virtual Currency / Web3</option>
+                  <option value="Nutraceuticals / Continuity Billing">Nutraceuticals / Negative Option Billing</option>
+                  <option value="Gaming & Esports">Online Gaming / Esports</option>
+                  <option value="Travel & High Volume Ticketing">Airlines / High-Value Travel</option>
+                </select>
+              </div>
+
+              <div class="col-12">
+                <label class="form-label fw-semibold text-danger">
+                  Risk Mitigation Explanation (Min 20 chars) <span class="text-danger">*</span>
+                </label>
+                <textarea
+                  class="form-control"
+                  rows="3"
+                  formControlName="highRiskExplanation"
+                  placeholder="Describe AML controls, chargeback mitigation tools (e.g. Ethoca/Verifi), and identity verification procedures..."
+                  [class.is-invalid]="wizardForm.get('processingProfile.highRiskExplanation')?.touched && wizardForm.get('processingProfile.highRiskExplanation')?.invalid"
+                ></textarea>
+                <div class="form-text small">Detailed explanation is mandatory for high-risk underwriting committee review.</div>
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- ========================================== -->
+    <!-- STEP 5: REVIEW & FINAL SUBMISSION -->
+    <!-- ========================================== -->
+    @if (currentStep() === 5) {
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white py-3">
+          <h5 class="card-title fw-bold mb-0">Step 5: Review & Merchant Underwriting Submission</h5>
+          <p class="text-muted small mb-0">Review all submitted sections before submitting to underwriting.</p>
+        </div>
+        <div class="card-body p-4">
+          <!-- Summary Review Grid -->
+          <div class="row g-3 mb-4">
+            <!-- Business Summary -->
+            <div class="col-12 col-md-6">
+              <div class="card h-100 border p-3">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <span class="fw-bold text-primary"><i class="bi bi-building me-1"></i> Business Profile</span>
+                  <button type="button" class="btn btn-sm btn-link p-0" (click)="goToStep(1)">Edit</button>
+                </div>
+                <div class="small">
+                  <div class="fw-semibold">{{ wizardForm.get('businessDetails.legalName')?.value }}</div>
+                  <div class="text-muted">EIN: {{ wizardForm.get('businessDetails.taxId')?.value }}</div>
+                  <div class="text-muted">{{ wizardForm.get('businessDetails.businessType')?.value }} • {{ wizardForm.get('businessDetails.industryCategory')?.value }}</div>
+                  <div class="text-muted">{{ wizardForm.get('businessDetails.websiteUrl')?.value }}</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Beneficial Owners Summary -->
+            <div class="col-12 col-md-6">
+              <div class="card h-100 border p-3">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <span class="fw-bold text-primary"><i class="bi bi-people me-1"></i> Beneficial Owners</span>
+                  <button type="button" class="btn btn-sm btn-link p-0" (click)="goToStep(2)">Edit</button>
+                </div>
+                <div class="small">
+                  @for (owner of beneficialOwners.value; track $index) {
+                    <div class="d-flex justify-content-between border-bottom py-1">
+                      <span>{{ owner.fullName }} ({{ owner.title }})</span>
+                      <span class="fw-bold">{{ owner.ownershipPercentage }}%</span>
+                    </div>
+                  }
+                </div>
+              </div>
+            </div>
+
+            <!-- Banking Summary -->
+            <div class="col-12 col-md-6">
+              <div class="card h-100 border p-3">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <span class="fw-bold text-primary"><i class="bi bi-bank me-1"></i> Settlement Bank</span>
+                  <button type="button" class="btn btn-sm btn-link p-0" (click)="goToStep(3)">Edit</button>
+                </div>
+                <div class="small">
+                  <div class="fw-semibold">{{ wizardForm.get('bankingDetails.bankName')?.value }}</div>
+                  <div class="text-muted">Routing: •••••{{ (wizardForm.get('bankingDetails.routingNumber')?.value || '').slice(-4) }}</div>
+                  <div class="text-muted">Account: ••••••••{{ (wizardForm.get('bankingDetails.accountNumber')?.value || '').slice(-4) }}</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Processing Volume Summary -->
+            <div class="col-12 col-md-6">
+              <div class="card h-100 border p-3">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <span class="fw-bold text-primary"><i class="bi bi-speedometer me-1"></i> Volume & Risk</span>
+                  <button type="button" class="btn btn-sm btn-link p-0" (click)="goToStep(4)">Edit</button>
+                </div>
+                <div class="small">
+                  <div>Est. Volume: <strong class="font-monospace">${{ wizardForm.get('processingProfile.estimatedMonthlyVolume')?.value | number }} / mo</strong></div>
+                  <div>Avg Ticket: ${{ wizardForm.get('processingProfile.averageTicketSize')?.value }} | Max: ${{ wizardForm.get('processingProfile.maximumTicketSize')?.value }}</div>
+                  <div class="mt-1">
+                    @if (wizardForm.get('processingProfile.isHighRiskIndustry')?.value) {
+                      <span class="badge bg-danger">High Risk Industry</span>
+                    } @else {
+                      <span class="badge bg-success">Standard Risk Tier</span>
+                    }
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Attestation Section -->
+          <div class="card bg-light border p-4 mb-3" formGroupName="attestation">
+            <h6 class="fw-bold text-dark mb-3">Merchant Authorized Attestation</h6>
+            <div class="form-check mb-3">
+              <input
+                class="form-check-input"
+                type="checkbox"
+                id="attestCheck"
+                formControlName="certifiedAccurate"
+                [class.is-invalid]="wizardForm.get('attestation.certifiedAccurate')?.touched && wizardForm.get('attestation.certifiedAccurate')?.invalid"
+              />
+              <label class="form-check-label small fw-semibold" for="attestCheck">
+                I hereby certify and declare under penalty of perjury that all information provided in this merchant processing application is true, correct, and complete to the best of my knowledge. I authorize PayGate and its sponsor banks to verify all business, credit, and beneficial owner records.
+              </label>
+              @if (wizardForm.get('attestation.certifiedAccurate')?.touched && wizardForm.get('attestation.certifiedAccurate')?.invalid) {
+                <div class="invalid-feedback">Attestation certification is required to submit.</div>
+              }
+            </div>
+
+            <div class="row g-3">
+              <div class="col-12 col-md-6">
+                <label class="form-label small fw-semibold">Authorized Signer Full Name <span class="text-danger">*</span></label>
+                <input
+                  type="text"
+                  class="form-control form-control-sm"
+                  formControlName="authorizedSignerName"
+                  placeholder="e.g. David Sterling"
+                />
+              </div>
+              <div class="col-12 col-md-6">
+                <label class="form-label small fw-semibold">Signature Date</label>
+                <input
+                  type="date"
+                  class="form-control form-control-sm bg-white"
+                  formControlName="signatureDate"
+                  readonly
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- Stepper Navigation Footer -->
+    <div class="card border-0 shadow-sm">
+      <div class="card-body p-3 d-flex justify-content-between align-items-center">
+        <!-- Back Button -->
+        <button
+          type="button"
+          class="btn btn-outline-secondary d-flex align-items-center gap-1"
+          [disabled]="currentStep() === 1"
+          (click)="previousStep()"
+        >
+          <i class="bi bi-chevron-left"></i>
+          <span>Previous</span>
+        </button>
+
+        <div class="small text-muted d-none d-sm-block">
+          Step {{ currentStep() }} of {{ totalSteps }}
+        </div>
+
+        <!-- Next / Submit Button -->
+        <div>
+          @if (currentStep() < totalSteps) {
+            <button
+              type="button"
+              class="btn btn-primary d-flex align-items-center gap-1"
+              (click)="nextStep()"
+            >
+              <span>Next Step</span>
+              <i class="bi bi-chevron-right"></i>
+            </button>
+          } @else {
+            <button
+              type="submit"
+              class="btn btn-success d-flex align-items-center gap-2 shadow"
+              [disabled]="isSubmitting() || !wizardForm.valid"
+            >
+              @if (isSubmitting()) {
+                <span class="spinner-border spinner-border-sm" role="status"></span>
+                <span>Submitting to Underwriting...</span>
+              } @else {
+                <i class="bi bi-check-circle-fill"></i>
+                <span>Submit Merchant Application</span>
+              }
+            </button>
+          }
+        </div>
+      </div>
+    </div>
+  </form>
+</div>
+

@@ -1,0 +1,33 @@
+<div class="masked-field-wrapper d-inline-flex align-items-center gap-2">
+  <span
+    class="font-monospace px-2 py-1 rounded bg-light border sensitive-value"
+    [class.revealed]="isRevealed()"
+    [attr.aria-label]="label"
+  >
+    {{ maskedDisplay() }}
+  </span>
+
+  @if (!isRevealed()) {
+    <button
+      type="button"
+      class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1 reveal-btn"
+      [class.opacity-50]="!userCanReveal()"
+      (click)="reveal()"
+      [title]="userCanReveal() ? 'Reveal sensitive value (Logged to audit)' : 'Restricted: SALES role cannot view raw financial data'"
+    >
+      <i class="bi bi-eye"></i>
+      <span class="d-none d-sm-inline">Reveal</span>
+    </button>
+  } @else {
+    <button
+      type="button"
+      class="btn btn-sm btn-outline-danger d-inline-flex align-items-center gap-1"
+      (click)="hide()"
+      title="Hide immediately"
+    >
+      <i class="bi bi-eye-slash"></i>
+      <span>Hide ({{ remainingSeconds() }}s)</span>
+    </button>
+  }
+</div>
+

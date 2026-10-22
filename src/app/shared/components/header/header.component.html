@@ -1,0 +1,145 @@
+<header class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top border-bottom border-secondary shadow-sm">
+  <div class="container-fluid px-3 px-lg-4">
+    <a class="navbar-brand d-flex align-items-center gap-2" routerLink="/dashboard">
+      <div class="brand-icon">
+        <i class="bi bi-shield-lock-fill text-primary fs-4"></i>
+      </div>
+      <div>
+        <span class="fw-bold tracking-tight text-white">PayGate</span>
+        <span class="badge bg-primary-subtle text-primary ms-2 fs-8 text-uppercase">Underwriting</span>
+      </div>
+    </a>
+
+    <!-- Live socket status pill -->
+    <div class="d-none d-md-flex align-items-center ms-3 me-auto">
+      <button
+        type="button"
+        class="badge rounded-pill border-0 d-flex align-items-center gap-1 live-indicator-btn"
+        [class.bg-success-subtle]="isConnected()"
+        [class.text-success]="isConnected()"
+        [class.bg-secondary-subtle]="!isConnected()"
+        [class.text-secondary]="!isConnected()"
+        (click)="realTimeService.toggleConnection()"
+        title="Toggle Real-Time Event Stream"
+      >
+        <span class="pulse-dot" [class.active]="isConnected()"></span>
+        <span>{{ isConnected() ? 'Live Stream Active' : 'Live Stream Paused' }}</span>
+      </button>
+    </div>
+
+    <!-- Navigation links -->
+    <nav class="d-none d-lg-flex align-items-center gap-1 me-3">
+      <a
+        routerLink="/dashboard"
+        routerLinkActive="active"
+        [routerLinkActiveOptions]="{ exact: true }"
+        class="nav-link px-3 py-2 rounded text-light-50 hover-text-light"
+      >
+        <i class="bi bi-speedometer2 me-1"></i> Dashboard
+      </a>
+
+      @if (currentRole() === 'SALES' || currentRole() === 'ADMIN') {
+        <a
+          routerLink="/applications/new"
+          routerLinkActive="active"
+          class="nav-link px-3 py-2 rounded text-light-50 hover-text-light"
+        >
+          <i class="bi bi-file-earmark-plus me-1"></i> New Application
+        </a>
+      }
+
+      @if (currentRole() === 'ADMIN') {
+        <a
+          routerLink="/audit-logs"
+          routerLinkActive="active"
+          class="nav-link px-3 py-2 rounded text-light-50 hover-text-light"
+        >
+          <i class="bi bi-journal-text me-1"></i> Audit Trail
+        </a>
+      }
+
+      <a
+        routerLink="/security-docs"
+        routerLinkActive="active"
+        class="nav-link px-3 py-2 rounded text-light-50 hover-text-light"
+      >
+        <i class="bi bi-shield-check me-1 text-info"></i> Security & CSP
+      </a>
+    </nav>
+
+    <!-- Right Actions: 401 Simulation & Role Switcher -->
+    <div class="d-flex align-items-center gap-2">
+      <!-- 401 Refresh Mutex Demo Button -->
+      <button
+        type="button"
+        class="btn btn-sm btn-outline-warning d-flex align-items-center gap-1"
+        (click)="simulateConcurrent401Burst()"
+        title="Fires 3 concurrent requests with an expired token to test the Mutex Token Refresh queue"
+      >
+        <i class="bi bi-arrow-repeat"></i>
+        <span class="d-none d-sm-inline">Test 401 Mutex</span>
+      </button>
+
+      <!-- Active Persona Switcher Dropdown -->
+      <div class="dropdown">
+        <button
+          class="btn btn-sm btn-outline-light dropdown-toggle d-flex align-items-center gap-2 px-2 py-1"
+          type="button"
+          id="userRoleMenu"
+          data-bs-toggle="dropdown"
+          aria-expanded="false"
+        >
+          <div class="user-avatar text-bg-secondary rounded-circle d-flex align-items-center justify-content-center">
+            <i class="bi bi-person-fill"></i>
+          </div>
+          <div class="text-start d-none d-md-block lh-1">
+            <div class="small fw-semibold text-white">{{ currentUser()?.name }}</div>
+            <div class="badge-role mt-1">
+              <span
+                class="badge"
+                [class.bg-primary]="currentRole() === 'SALES'"
+                [class.bg-warning]="currentRole() === 'REVIEWER'"
+                [class.text-dark]="currentRole() === 'REVIEWER'"
+                [class.bg-danger]="currentRole() === 'ADMIN'"
+              >
+                {{ currentRole() }}
+              </span>
+            </div>
+          </div>
+        </button>
+
+        <ul class="dropdown-menu dropdown-menu-end shadow p-2" aria-labelledby="userRoleMenu" style="min-width: 260px">
+          <li class="dropdown-header text-uppercase fs-8 text-secondary fw-bold px-2 mb-1">
+            Switch Evaluation Persona
+          </li>
+
+          @for (item of roles; track item.role) {
+            <li>
+              <button
+                type="button"
+                class="dropdown-item rounded d-flex align-items-center justify-content-between py-2 px-2 mb-1"
+                [class.active]="currentRole() === item.role"
+                (click)="switchUser(item.role)"
+              >
+                <div>
+                  <div class="fw-semibold">{{ item.name }}</div>
+                  <div class="small text-muted">{{ item.title }}</div>
+                </div>
+                <span class="badge {{ item.badgeClass }} ms-2">{{ item.role }}</span>
+              </button>
+            </li>
+          }
+
+          <li><hr class="dropdown-divider my-2" /></li>
+          <li class="px-2">
+            <div class="small text-muted">
+              <i class="bi bi-info-circle me-1"></i>
+              Switching roles reactively toggles UI controls, route permissions, and sensitive reveal access.
+            </div>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</header>
+

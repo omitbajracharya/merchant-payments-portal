@@ -1,0 +1,21 @@
+.sensitive-value {
+  font-size: 0.875rem;
+  letter-spacing: 1px;
+  background-color: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #334155;
+  transition: all 0.2s ease-in-out;
+
+  &.revealed {
+    background-color: #fef2f2;
+    border-color: #fca5a5;
+    color: #991b1b;
+    font-weight: 600;
+  }
+}
+
+.reveal-btn {
+  font-size: 0.75rem;
+  padding: 0.2rem 0.5rem;
+}
+

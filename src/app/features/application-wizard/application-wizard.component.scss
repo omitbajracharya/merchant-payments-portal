@@ -1,0 +1,55 @@
+.auto-save-pill {
+  background-color: #f8fafc;
+  font-size: 0.8rem;
+  min-height: 34px;
+}
+
+.stepper-tab {
+  transition: all 0.2s ease-in-out;
+  cursor: pointer;
+
+  &:hover {
+    background-color: #f1f5f9 !important;
+  }
+
+  &.active {
+    background-color: #eff6ff !important;
+
+    .step-badge {
+      background-color: #2563eb;
+      color: white;
+    }
+
+    .step-title {
+      color: #1d4ed8;
+      font-weight: 700;
+    }
+  }
+
+  &.completed {
+    .step-badge {
+      background-color: #10b981;
+      color: white;
+    }
+  }
+}
+
+.step-badge {
+  width: 28px;
+  height: 28px;
+  background-color: #e2e8f0;
+  color: #64748b;
+  font-size: 0.85rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.step-title {
+  font-size: 0.85rem;
+  color: #334155;
+}
+
+.step-sub {
+  font-size: 0.725rem;
+}
+

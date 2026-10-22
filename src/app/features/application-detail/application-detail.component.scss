@@ -1,0 +1,22 @@
+.fs-7 {
+  font-size: 0.8rem;
+}
+
+.timeline {
+  .timeline-item {
+    &:last-child {
+      border-start-color: transparent !important;
+      padding-bottom: 0 !important;
+    }
+
+    .timeline-dot {
+      width: 12px;
+      height: 12px;
+      left: -6px;
+      top: 4px;
+      border: 2px solid white;
+      box-shadow: 0 0 0 2px #2563eb;
+    }
+  }
+}
+
