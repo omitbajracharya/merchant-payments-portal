@@ -1,8 +1,8 @@
-import { Component, OnInit, OnDestroy, signal, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, signal, inject, computed, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { Subject, Subscription, combineLatest, of } from 'rxjs';
+import { Subject, Subscription, of } from 'rxjs';
 import {
   debounceTime,
   distinctUntilChanged,
@@ -11,7 +11,7 @@ import {
   tap,
 } from 'rxjs/operators';
 import { ApplicationService } from '../../core/services/application.service';
-import { AuthService } from '../../core/services/auth.service';
+import { AuthService, MOCK_USERS } from '../../core/services/auth.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { RealTimeService } from '../../core/services/real-time.service';
 import {
@@ -21,6 +21,7 @@ import {
   ApplicationStatus,
   RiskTier,
 } from '../../core/models/application.model';
+import { UserRole } from '../../core/models/auth.model';
 
 @Component({
   selector: 'app-dashboard',
@@ -46,6 +47,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
   readonly totalPages = signal<number>(1);
   protected readonly Math = Math;
 
+  // Role Scope Filter:
+  // 'ROLE_DEFAULT': Sales -> My Apps; Reviewer -> Assigned to Me; Admin -> All
+  // 'ALL': All applications across the portal
+  // 'UNASSIGNED': Applications waiting for reviewer assignment (Crucial for Admin!)
+  readonly roleScope = signal<'ROLE_DEFAULT' | 'ALL' | 'UNASSIGNED'>('ROLE_DEFAULT');
+
   // Filter State
   searchQuery = '';
   selectedStatus: ApplicationStatus | 'ALL' = 'ALL';
@@ -61,6 +68,16 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private readonly filterChange$ = new Subject<void>();
   private readonly searchChange$ = new Subject<string>();
   private sub = new Subscription();
+
+  constructor() {
+    // Whenever the active persona role changes in AuthService, reset to ROLE_DEFAULT and trigger reload
+    effect(() => {
+      this.authService.currentRole();
+      this.roleScope.set('ROLE_DEFAULT');
+      this.currentPage = 1;
+      this.triggerReload();
+    });
+  }
 
   ngOnInit(): void {
     this.setupFilterStreams();
@@ -78,7 +95,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
           distinctUntilChanged(),
           tap((term) => {
             this.searchQuery = term;
-            this.currentPage = 1; // Reset to page 1 on new search
+            this.currentPage = 1;
             this.filterChange$.next();
           })
         )
@@ -97,15 +114,35 @@ export class DashboardComponent implements OnInit, OnDestroy {
             if (this.simulateNetworkError) {
               return of(null).pipe(
                 switchMap(() => {
-                  throw new Error('Simulated network failure. Could not connect to Underwriting Service.');
+                  throw new Error(
+                    'Simulated network failure. Could not connect to Underwriting Service.'
+                  );
                 })
               );
+            }
+
+            const currentRole = this.authService.currentRole();
+            const scope = this.roleScope();
+
+            let assignedTo: string = 'ALL';
+            let salesRepId: string = 'ALL';
+
+            if (scope === 'UNASSIGNED') {
+              assignedTo = 'UNASSIGNED';
+            } else if (scope === 'ROLE_DEFAULT') {
+              if (currentRole === 'SALES') {
+                salesRepId = 'usr_sales_01'; // Sarah Jenkins
+              } else if (currentRole === 'REVIEWER') {
+                assignedTo = 'usr_reviewer_02'; // Marcus Vance
+              }
             }
 
             const filter: ApplicationFilter = {
               searchQuery: this.searchQuery,
               status: this.selectedStatus,
               riskTier: this.selectedRiskTier,
+              assignedTo,
+              salesRepId,
               page: this.currentPage,
               pageSize: this.pageSize,
               sortBy: this.sortBy,
@@ -137,8 +174,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   private setupRealTimeListener(): void {
     this.sub.add(
-      this.realTimeService.events$.subscribe((event) => {
-        // Reload list and metrics on real-time update
+      this.realTimeService.events$.subscribe(() => {
         this.triggerReload();
         this.loadMetrics();
       })
@@ -148,7 +184,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   loadMetrics(): void {
     this.appService.getMetrics().subscribe({
       next: (data) => this.metrics.set(data),
-      error: () => {}, // Handled quietly
+      error: () => {},
     });
   }
 
@@ -159,6 +195,21 @@ export class DashboardComponent implements OnInit, OnDestroy {
   onFilterChange(): void {
     this.currentPage = 1;
     this.triggerReload();
+  }
+
+  setRoleScope(scope: 'ROLE_DEFAULT' | 'ALL' | 'UNASSIGNED'): void {
+    this.roleScope.set(scope);
+    this.currentPage = 1;
+    this.triggerReload();
+  }
+
+  switchPersona(role: UserRole): void {
+    this.authService.switchRole(role);
+    const user = this.authService.currentUser();
+    this.notificationService.success(
+      'Persona Switched',
+      `Active persona changed to ${user?.name} (${user?.role})`
+    );
   }
 
   setSort(column: ApplicationFilter['sortBy']): void {
@@ -188,6 +239,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.searchQuery = '';
     this.selectedStatus = 'ALL';
     this.selectedRiskTier = 'ALL';
+    this.roleScope.set('ROLE_DEFAULT');
     this.currentPage = 1;
     this.sortBy = 'createdAt';
     this.sortDirection = 'desc';
@@ -211,12 +263,42 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.filterChange$.next();
   }
 
+  /**
+   * Admin quick assignment: Assigns unassigned application to a reviewer directly from the table!
+   */
+  assignReviewerInline(app: MerchantApplication, reviewerId: string, reviewerName: string): void {
+    const admin = this.authService.currentUser();
+    this.appService
+      .reassignApplication(app.id, {
+        reviewerId,
+        reviewerName,
+        adminName: admin?.name || 'Elena Rostova',
+      })
+      .subscribe({
+        next: (updated) => {
+          this.notificationService.success(
+            'Reviewer Assigned!',
+            `Application ${updated.applicationNumber} assigned to ${reviewerName}. Status moved to UNDER_REVIEW.`
+          );
+          this.triggerReload();
+          this.loadMetrics();
+        },
+        error: () => {
+          this.notificationService.error('Assignment Error', 'Failed to assign reviewer.');
+        },
+      });
+  }
+
   // Permission Checks for Actions
   canEdit(app: MerchantApplication): boolean {
     const role = this.authService.currentRole();
     if (role === 'ADMIN') return true;
     if (role === 'SALES') {
-      return app.status === 'DRAFT' || app.status === 'SUBMITTED' || app.status === 'INFO_REQUESTED';
+      return (
+        app.status === 'DRAFT' ||
+        app.status === 'SUBMITTED' ||
+        app.status === 'INFO_REQUESTED'
+      );
     }
     return false;
   }
@@ -224,6 +306,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
   canReview(app: MerchantApplication): boolean {
     const role = this.authService.currentRole();
     return role === 'REVIEWER' || role === 'ADMIN';
+  }
+
+  canAdminAssign(): boolean {
+    return this.authService.currentRole() === 'ADMIN';
   }
 
   ngOnDestroy(): void {

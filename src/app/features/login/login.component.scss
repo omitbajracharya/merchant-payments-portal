@@ -1,0 +1,46 @@
+.login-card {
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.brand-icon {
+  width: 52px;
+  height: 52px;
+  background: rgba(37, 99, 235, 0.15);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.persona-card {
+  transition: all 0.2s ease-in-out;
+  background: #ffffff;
+
+  &:hover {
+    border-color: #2563eb !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  }
+
+  &.selected {
+    border-color: #2563eb !important;
+    background-color: #eff6ff !important;
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+  }
+}
+
+.persona-icon-box {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+}
+
+.cursor-pointer {
+  cursor: pointer;
+}
+
+.fs-8 {
+  font-size: 0.7rem;
+}
+

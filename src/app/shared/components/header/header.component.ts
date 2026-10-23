@@ -1,6 +1,6 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { AuthService, MOCK_USERS } from '../../../core/services/auth.service';
 import { UserRole } from '../../../core/models/auth.model';
@@ -21,10 +21,12 @@ export class HeaderComponent {
   readonly notificationService = inject(NotificationService);
   readonly realTimeService = inject(RealTimeService);
   private readonly http = inject(HttpClient);
+  private readonly router = inject(Router);
 
   readonly currentUser = this.authService.currentUser;
   readonly currentRole = this.authService.currentRole;
   readonly isConnected = this.realTimeService.isConnected;
+  readonly isDropdownOpen = signal<boolean>(false);
 
   roles: { role: UserRole; name: string; title: string; badgeClass: string }[] = [
     {
@@ -34,26 +36,42 @@ export class HeaderComponent {
       badgeClass: 'bg-primary',
     },
     {
-      role: 'REVIEWER',
-      name: MOCK_USERS.REVIEWER.name,
-      title: 'Senior Risk Reviewer',
-      badgeClass: 'bg-warning text-dark',
-    },
-    {
       role: 'ADMIN',
       name: MOCK_USERS.ADMIN.name,
       title: 'Compliance & Risk Admin',
       badgeClass: 'bg-danger',
     },
+    {
+      role: 'REVIEWER',
+      name: MOCK_USERS.REVIEWER.name,
+      title: 'Senior Risk Reviewer',
+      badgeClass: 'bg-warning text-dark',
+    },
   ];
+
+  toggleDropdown(): void {
+    this.isDropdownOpen.update((v) => !v);
+  }
+
+  closeDropdown(): void {
+    this.isDropdownOpen.set(false);
+  }
 
   switchUser(role: UserRole): void {
     this.authService.switchRole(role);
+    this.closeDropdown();
     const user = this.authService.currentUser();
     this.notificationService.success(
       'Role Switched',
       `Active persona changed to ${user?.name} (${user?.role})`
     );
+  }
+
+  logout(): void {
+    this.authService.logout();
+    this.closeDropdown();
+    this.notificationService.info('Signed Out', 'You have been signed out.');
+    this.router.navigate(['/login']);
   }
 
   /**
@@ -88,4 +106,3 @@ export class HeaderComponent {
     });
   }
 }
-

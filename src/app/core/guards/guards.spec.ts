@@ -28,13 +28,13 @@ describe('Auth & Role Guards', () => {
       expect(result).toBe(true);
     });
 
-    it('should redirect to /dashboard when user is not authenticated', () => {
+    it('should redirect to /login when user is not authenticated', () => {
       authService.logout();
       const result = TestBed.runInInjectionContext(() =>
         authGuard({} as any, {} as any)
       );
       expect(result instanceof UrlTree).toBe(true);
-      expect((result as UrlTree).toString()).toBe('/dashboard');
+      expect((result as UrlTree).toString()).toBe('/login');
     });
   });
 

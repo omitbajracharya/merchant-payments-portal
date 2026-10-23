@@ -22,6 +22,6 @@ describe('AppComponent', () => {
   it(`should have the correct title`, () => {
     const fixture = TestBed.createComponent(AppComponent);
     const app = fixture.componentInstance;
-    expect(app.title).toEqual('PayGate Underwrite Portal');
+    expect(app.title).toEqual('PayGate Merchant Payments Portal');
   });
 });

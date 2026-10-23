@@ -33,6 +33,9 @@ export class ApplicationService {
     if (filter.assignedTo && filter.assignedTo !== 'ALL') {
       params = params.set('assignedTo', filter.assignedTo);
     }
+    if (filter.salesRepId && filter.salesRepId !== 'ALL') {
+      params = params.set('salesRepId', filter.salesRepId);
+    }
 
     return this.http.get<PaginatedResult<MerchantApplication>>('/api/applications', { params });
   }

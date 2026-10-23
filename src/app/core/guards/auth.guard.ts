@@ -10,7 +10,7 @@ export const authGuard: CanActivateFn = (route, state) => {
     return true;
   }
 
-  // If not authenticated, redirect to root dashboard with error or login
-  return router.createUrlTree(['/dashboard']);
+  // If not authenticated, redirect to login
+  return router.createUrlTree(['/login']);
 };
 

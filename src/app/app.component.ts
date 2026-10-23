@@ -11,5 +11,5 @@ import { ToastContainerComponent } from './shared/components/toast-container/toa
   styleUrls: ['./app.component.scss'],
 })
 export class AppComponent {
-  title = 'PayGate Underwrite Portal';
+  title = 'PayGate Merchant Payments Portal';
 }

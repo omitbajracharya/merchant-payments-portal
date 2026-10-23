@@ -1,0 +1,107 @@
+<div class="login-wrapper min-vh-100 d-flex align-items-center justify-content-center p-3 bg-surface">
+  <div class="card border-0 shadow-lg login-card" style="max-width: 620px; width: 100%">
+    <!-- Brand Header -->
+    <div class="card-header bg-dark text-white p-4 border-0 rounded-top text-center">
+      <div class="brand-icon mx-auto mb-2 text-primary fs-2">
+        <i class="bi bi-shield-lock-fill"></i>
+      </div>
+      <h2 class="h4 fw-bold mb-1">PayGate Merchant Payments Portal</h2>
+      <p class="text-light-50 small mb-0">
+        Enterprise Merchant Underwriting & Risk Evaluation System
+      </p>
+    </div>
+
+    <div class="card-body p-4 p-md-5">
+      <div class="text-center mb-4">
+        <span class="badge bg-primary-subtle text-primary px-3 py-1 mb-2 fw-semibold">
+          Select Evaluation Persona
+        </span>
+        <h3 class="h5 fw-bold text-dark mb-1">Choose a Role to Sign In</h3>
+        <p class="text-muted small">
+          Click any role below to authenticate instantly and observe its permitted workflow.
+        </p>
+      </div>
+
+      <!-- 3 Persona Cards -->
+      <div class="d-flex flex-column gap-3 mb-4">
+        @for (item of rolesList; track item.role) {
+          <div
+            class="persona-card p-3 rounded-3 border d-flex align-items-center justify-content-between cursor-pointer"
+            [class.selected]="selectedRole === item.role"
+            (click)="onRoleCardClick(item.role)"
+          >
+            <div class="d-flex align-items-center gap-3">
+              <div class="persona-icon-box rounded-circle d-flex align-items-center justify-content-center {{ item.badgeClass }}">
+                <i class="bi {{ item.icon }} text-white fs-5"></i>
+              </div>
+              <div>
+                <div class="d-flex align-items-center gap-2">
+                  <span class="fw-bold text-dark">{{ item.name }}</span>
+                  <span class="badge {{ item.badgeClass }} fs-8">{{ item.role }}</span>
+                </div>
+                <div class="small text-muted">{{ item.title }}</div>
+                <div class="small font-monospace text-secondary">{{ item.email }}</div>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              class="btn btn-sm"
+              [class.btn-primary]="selectedRole === item.role"
+              [class.btn-outline-secondary]="selectedRole !== item.role"
+              (click)="loginWithRole(item.role); $event.stopPropagation()"
+            >
+              Sign In as {{ item.role }}
+            </button>
+          </div>
+        }
+      </div>
+
+      <!-- Divider -->
+      <div class="d-flex align-items-center my-4">
+        <hr class="flex-grow-1 my-0" />
+        <span class="px-3 text-muted small text-uppercase">Or Standard Login</span>
+        <hr class="flex-grow-1 my-0" />
+      </div>
+
+      <!-- Form -->
+      <form (ngSubmit)="onSubmit()">
+        <div class="mb-3">
+          <label class="form-label small fw-semibold">Email Address</label>
+          <div class="input-group">
+            <span class="input-group-text bg-light border-end-0"><i class="bi bi-envelope text-muted"></i></span>
+            <input type="email" class="form-control bg-light border-start-0" [(ngModel)]="email" name="email" required />
+          </div>
+        </div>
+
+        <div class="mb-4">
+          <label class="form-label small fw-semibold">Security Password</label>
+          <div class="input-group">
+            <span class="input-group-text bg-light border-end-0"><i class="bi bi-key text-muted"></i></span>
+            <input type="password" class="form-control bg-light border-start-0" [(ngModel)]="password" name="password" required />
+          </div>
+        </div>
+
+        <button
+          type="submit"
+          class="btn btn-primary w-100 py-2 d-flex align-items-center justify-content-center gap-2 shadow"
+          [disabled]="isSubmitting()"
+        >
+          @if (isSubmitting()) {
+            <span class="spinner-border spinner-border-sm" role="status"></span>
+            <span>Authenticating...</span>
+          } @else {
+            <i class="bi bi-box-arrow-in-right"></i>
+            <span>Authenticate as {{ selectedRole }}</span>
+          }
+        </button>
+      </form>
+    </div>
+
+    <div class="card-footer bg-light p-3 text-center border-top small text-muted">
+      <i class="bi bi-shield-check text-success me-1"></i>
+      Zero credentials committed • Synthetic test environment • RBAC enforced
+    </div>
+  </div>
+</div>
+

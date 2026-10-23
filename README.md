@@ -61,19 +61,32 @@ In the top navbar, click the **"Test 401 Mutex"** button. This intentionally exp
 
 ---
 
-## 👥 2. User Roles & Permission Matrix (RBAC)
+## 👥 2. User Roles & Connected Workflow Matrix (SALES ➔ ADMIN ➔ REVIEWER)
 
-The application provides three default evaluation personas, switchable in one click from the navbar:
+The application provides three default evaluation personas, switchable in one click from the top banner and navigation bar:
 
-| Capability | SALES (`Sarah Jenkins`) | REVIEWER (`Marcus Vance`) | ADMIN (`Elena Rostova`) |
+```
+[ 1. SALES: Sarah Jenkins ] ──────➔ [ 2. ADMIN: Elena Rostova ] ──────➔ [ 3. REVIEWER: Marcus Vance ]
+  - Creates applications              - Oversees entire pipeline        - Evaluates risk profile
+  - Auto-saves drafts                 - Filters unassigned queue        - Unmasks banking PII (audited)
+  - Submits for underwriting          - Assigns Marcus Vance            - Commits risk decision (Approve/Reject)
+```
+
+| Operational Stage | SALES (`Sarah Jenkins`) | ADMIN (`Elena Rostova`) | REVIEWER (`Marcus Vance`) |
 |---|:---:|:---:|:---:|
-| **Create New Merchant Applications** | ✅ | ❌ | ✅ |
-| **Edit Applications (Draft/Pending)** | ✅ (Permitted/Own) | ❌ | ✅ (All) |
-| **View Applications Dashboard** | ✅ (Permitted) | ✅ (Assigned) | ✅ (All) |
-| **Review & Commit Risk Decisions** | ❌ (Hidden from UI) | ✅ | ✅ |
-| **Reassign Applications to Reviewers** | ❌ | ❌ | ✅ |
-| **Reveal Sensitive PII / Banking Data**| ❌ (Access Denied) | ✅ (Audited, 30s auto-remask) | ✅ (Audited, 30s auto-remask) |
-| **Access Security Audit Trail** | ❌ | ❌ | ✅ |
+| **1. Create Merchant Application** | ✅ Full Creation & Auto-Save | ✅ Full Creation | ❌ View Assigned Only |
+| **2. Edit Application Drafts** | ✅ Permitted & Owned | ✅ All Applications | ❌ Restricted |
+| **3. Filter Default View** | Sarah's Permitted Apps | All Applications + Unassigned Queue | Assigned to Marcus Vance |
+| **4. Manage Reviewer Assignments** | ❌ Restricted | ✅ Direct 1-Click Assignment | ❌ Restricted |
+| **5. Record Risk Decisions** | ❌ Hidden from UI | ✅ Full Approval/Rejection | ✅ Full Approval/Rejection |
+| **6. Unmask Sensitive Financial PII**| ❌ Access Denied (RBAC) | ✅ Audited (30s auto-remask) | ✅ Audited (30s auto-remask) |
+| **7. Access Security Audit Trail** | ❌ Restricted | ✅ Full Immutable Ledger | ❌ Restricted |
+
+### How the Connected Workflow Operates in Real Time:
+1. **Sales Initiates:** Sarah Jenkins opens `/applications/new`, completes the 5-step wizard with auto-save active, and clicks Submit. The application enters the system with status `SUBMITTED` and reviewer `Unassigned`.
+2. **Admin Assigns:** Elena Rostova switches to ADMIN, filters by **"Unassigned Queue"**, finds the submission (e.g. `APP-1002`), and selects **"Assign Reviewer ➔ Marcus Vance"**. The application status automatically advances to `UNDER_REVIEW`.
+3. **Reviewer Decides:** Marcus Vance switches to REVIEWER, sees the application in his assigned queue, inspects the business and processing limits, clicks "Reveal" to audit the banking numbers (with 30s auto-remask), and commits the underwriting decision (`APPROVE` with reserve condition).
+4. **Sales Verifies:** Sarah Jenkins switches back to SALES, where the application displays as `APPROVED` with approval conditions and decision notes.
 
 ---
 
@@ -182,12 +195,27 @@ npm test
   - Reviewer unmask + audit log dispatch.
   - Sales role restriction.
   - 30s re-mask countdown.
-- **Dashboard & Wizard (`dashboard.component.spec.ts`, `application-wizard.component.spec.ts`, `app.component.spec.ts` - 9 tests):**
-  - Pagination, sorting, search debouncing, FormArray controls, dynamic risk validations.
+- **Dashboard & Wizard (`dashboard.component.spec.ts`, `application-wizard.component.spec.ts`, `app.component.spec.ts` - 11 tests):**
+  - Pagination, sorting, search debouncing, FormArray controls, dynamic risk validations, inline admin assignments, role scope filtering.
 
 ---
 
-## 💻 7. Getting Started
+## 🎙️ 7. Interview Defense Guide: How to Explain Your Code
+
+When reviewing this codebase during the technical interview, focus on these clear architectural explanations:
+
+### 1. Why Signals + RxJS together?
+> *"We use modern Angular Signals for synchronous, stateful UI values (`currentUser`, `currentRole`, `applications`, `isLoading`) because Signals provide fine-grained reactivity and eliminate redundant Change Detection cycles. We use RxJS where it truly excels: asynchronous event pipelines such as the debounced draft auto-save (`debounceTime`, `distinctUntilChanged`, `switchMap`), search input streams, and the concurrent 401 token refresh queue."*
+
+### 2. How did you solve the Concurrent 401 Token Refresh race condition?
+> *"In `TokenRefreshService`, we implemented a mutex queue using a `BehaviorSubject`. When concurrent requests fail with 401, the first request sets `isRefreshing = true` and fires `POST /api/auth/refresh`. Other requests check `isRefreshing`, wait on `refreshTokenSubject.pipe(filter(t => t !== null), take(1))`, and replay automatically once the fresh token is broadcasted. This guarantees exactly one refresh call fires, eliminating server race conditions."*
+
+### 3. How do you guarantee zero bypass for RBAC between Sales, Reviewer, and Admin?
+> *"Security is applied at multiple defense levels: (1) Angular Router functional guards (`authGuard`, `roleGuard`) block unauthorized route access; (2) structural directives (`*appHasRole`) conditionally render sensitive controls such as the Reviewer Decision Console; (3) sensitive PII unmasking checks roles in `MaskedFieldComponent`, enforces an automatic 30-second remask timer, and logs all unmasks to an immutable audit trail; and (4) the mock backend interceptor rejects any unauthorized mutation."*
+
+---
+
+## 💻 8. Getting Started
 
 ### Prerequisites
 - Node.js `^20.0.0` or `^22.0.0` or `^24.0.0`
@@ -199,7 +227,7 @@ npm test
 # 1. Install dependencies
 npm install
 
-# 2. Run unit tests with Vitest (All 37 passing)
+# 2. Run unit tests with Vitest (All 39 passing)
 npm run test:ci
 
 # 3. Start development server
@@ -220,5 +248,5 @@ Navigate to `http://localhost:4200/` in your browser.
 | **Draft & Auto-Save (RxJS)** | ✅ Passed | `debounceTime(1200)`, `distinctUntilChanged`, status indicators, resume draft |
 | **Security & RBAC UI** | ✅ Passed | SALES / REVIEWER / ADMIN matrix, role guards, `*appHasRole` directive |
 | **Sensitive Field Masking & CSP** | ✅ Passed | Masked by default, 30s auto-remask, audit log, CSP header & doc view |
-| **Vitest & TestBed Testing** | ✅ Passed | 37 tests across 8 test suites passing in < 5 seconds |
+| **Vitest & TestBed Testing** | ✅ Passed | 39 tests across 8 test suites passing in < 6 seconds |
 | **Automatic-Fail Checks** | ✅ Passed | Zero committed secrets, zero real PII, strict permission checks, original code |

@@ -621,6 +621,7 @@ export const mockBackendInterceptor: HttpInterceptorFn = (req, next) => {
     const status = url.searchParams.get('status') || 'ALL';
     const riskTier = url.searchParams.get('riskTier') || 'ALL';
     const assignedTo = url.searchParams.get('assignedTo') || 'ALL';
+    const salesRepId = url.searchParams.get('salesRepId') || 'ALL';
     const page = parseInt(url.searchParams.get('page') || '1', 10);
     const pageSize = parseInt(url.searchParams.get('pageSize') || '5', 10);
     const sortBy = url.searchParams.get('sortBy') || 'createdAt';
@@ -639,6 +640,11 @@ export const mockBackendInterceptor: HttpInterceptorFn = (req, next) => {
       );
     }
 
+    // Filter by salesRepId (For SALES role view)
+    if (salesRepId !== 'ALL') {
+      filtered = filtered.filter((app) => app.salesRepId === salesRepId);
+    }
+
     // Filter by status
     if (status !== 'ALL') {
       filtered = filtered.filter((app) => app.status === status);
@@ -650,7 +656,9 @@ export const mockBackendInterceptor: HttpInterceptorFn = (req, next) => {
     }
 
     // Filter by assigned reviewer
-    if (assignedTo !== 'ALL') {
+    if (assignedTo === 'UNASSIGNED') {
+      filtered = filtered.filter((app) => !app.assignedReviewerId || app.assignedReviewerId === '');
+    } else if (assignedTo !== 'ALL') {
       filtered = filtered.filter((app) => app.assignedReviewerId === assignedTo);
     }
 

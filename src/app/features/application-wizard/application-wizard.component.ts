@@ -6,6 +6,7 @@ import {
   FormArray,
   Validators,
   ReactiveFormsModule,
+  AbstractControl,
 } from '@angular/forms';
 import { Router, ActivatedRoute, RouterModule } from '@angular/router';
 import { Subscription } from 'rxjs';
@@ -95,17 +96,23 @@ export class ApplicationWizardComponent implements OnInit, OnDestroy {
           '',
           [
             Validators.required,
-            Validators.pattern(/^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/),
+            Validators.pattern(/^(https?:\/\/)?([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,10}(\/.*)?$/),
           ],
         ],
-        phone: ['', [Validators.required, Validators.pattern(/^\(?\d{3}\)?[- ]?\d{3}[- ]?\d{4}$/)]],
+        phone: [
+          '',
+          [
+            Validators.required,
+            Validators.pattern(/^[+]?[(]?[0-9]{3}[)]?[-\s.]?[0-9]{3}[-\s.]?[0-9]{4,6}$/),
+          ],
+        ],
         industryCategory: ['Retail - E-Commerce', [Validators.required]],
         address: this.fb.group({
           street: ['', [Validators.required]],
           unit: [''],
           city: ['', [Validators.required]],
-          state: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(2)]],
-          postalCode: ['', [Validators.required, Validators.pattern(/^\d{5}(-\d{4})?$/)]],
+          state: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(10)]],
+          postalCode: ['', [Validators.required, Validators.pattern(/^[a-zA-Z0-9 -]{4,10}$/)]],
           country: ['US', [Validators.required]],
         }),
       }),
@@ -202,6 +209,15 @@ export class ApplicationWizardComponent implements OnInit, OnDestroy {
 
     this.beneficialOwners.push(ownerGroup);
     this.wizardForm.markAsDirty();
+  }
+
+  setSampleRoutingNumber(code: string): void {
+    const ctrl = this.wizardForm.get('bankingDetails.routingNumber');
+    if (ctrl) {
+      ctrl.setValue(code);
+      ctrl.markAsDirty();
+      ctrl.markAsTouched();
+    }
   }
 
   removeBeneficialOwner(index: number): void {
@@ -362,13 +378,64 @@ export class ApplicationWizardComponent implements OnInit, OnDestroy {
 
     if (currentGroup && !currentGroup.valid) {
       currentGroup.markAllAsTouched();
+      const invalidFields = this.getInvalidFieldNames(currentGroup);
+      const fieldsMsg = invalidFields.length > 0 ? `: ${invalidFields.join(', ')}` : '';
       this.notificationService.warning(
         'Incomplete Fields',
-        'Please correct the highlighted validation errors before proceeding.'
+        `Please correct the highlighted validation errors${fieldsMsg}.`
       );
       return false;
     }
     return true;
+  }
+
+  private getInvalidFieldNames(group: AbstractControl): string[] {
+    const invalidNames: string[] = [];
+    if (group instanceof FormGroup) {
+      Object.keys(group.controls).forEach((key) => {
+        const ctrl = group.get(key);
+        if (ctrl && ctrl.invalid) {
+          if (ctrl instanceof FormGroup) {
+            invalidNames.push(...this.getInvalidFieldNames(ctrl));
+          } else {
+            invalidNames.push(this.formatFieldName(key));
+          }
+        }
+      });
+    } else if (group instanceof FormArray) {
+      group.controls.forEach((item, idx) => {
+        if (item.invalid) {
+          invalidNames.push(`Owner #${idx + 1}`);
+        }
+      });
+    }
+    return invalidNames;
+  }
+
+  private formatFieldName(name: string): string {
+    const map: Record<string, string> = {
+      legalName: 'Legal Business Name',
+      dbaName: 'Doing Business As (DBA)',
+      taxId: 'Tax ID / EIN',
+      businessType: 'Entity Type',
+      incorporationDate: 'Incorporation Date',
+      websiteUrl: 'Company Website URL',
+      phone: 'Business Phone',
+      street: 'Street Address',
+      city: 'City',
+      state: 'State',
+      postalCode: 'Postal / ZIP Code',
+      routingNumber: 'Routing Transit Number',
+      accountNumber: 'Account Number',
+      confirmAccountNumber: 'Confirm Account Number',
+      estimatedMonthlyVolume: 'Estimated Monthly Volume',
+      averageTicketSize: 'Average Ticket Size',
+      maximumTicketSize: 'Maximum Ticket Size',
+      highRiskExplanation: 'Risk Mitigation Explanation',
+      certifiedAccurate: 'Attestation Certification',
+      authorizedSignerName: 'Authorized Signer Name',
+    };
+    return map[name] || name;
   }
 
   submitApplication(): void {

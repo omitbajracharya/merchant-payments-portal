@@ -6,7 +6,7 @@
       </div>
       <div>
         <span class="fw-bold tracking-tight text-white">PayGate</span>
-        <span class="badge bg-primary-subtle text-primary ms-2 fs-8 text-uppercase">Underwriting</span>
+        <span class="badge bg-primary-subtle text-primary ms-2 fs-8 text-uppercase">Merchant Payments</span>
       </div>
     </a>
 
@@ -20,10 +20,16 @@
         [class.bg-secondary-subtle]="!isConnected()"
         [class.text-secondary]="!isConnected()"
         (click)="realTimeService.toggleConnection()"
-        title="Toggle Real-Time Event Stream"
+        title="Toggle Real-Time Socket.IO Status Updates"
       >
         <span class="pulse-dot" [class.active]="isConnected()"></span>
-        <span>{{ isConnected() ? 'Live Stream Active' : 'Live Stream Paused' }}</span>
+        <span class="fw-semibold">
+          @if (isConnected()) {
+            <i class="bi bi-broadcast me-1"></i> Socket.IO Live
+          } @else {
+            <i class="bi bi-pause-circle me-1"></i> Socket.IO Paused
+          }
+        </span>
       </button>
     </div>
 
@@ -67,8 +73,46 @@
       </a>
     </nav>
 
-    <!-- Right Actions: 401 Simulation & Role Switcher -->
+    <!-- Right Actions: 1-Click Role Switcher, 401 Simulation & User Menu -->
     <div class="d-flex align-items-center gap-2">
+      <!-- 1-Click Quick Persona Pills (Always Visible) -->
+      <div class="d-flex align-items-center bg-black bg-opacity-25 p-1 rounded border border-secondary border-opacity-50 me-1">
+        <span class="fs-8 text-light-50 text-uppercase fw-bold px-2 d-none d-xl-inline">Role:</span>
+        <div class="btn-group btn-group-sm" role="group">
+          <button
+            type="button"
+            class="btn py-1 px-2 fw-semibold"
+            [class.btn-primary]="currentRole() === 'SALES'"
+            [class.btn-outline-secondary]="currentRole() !== 'SALES'"
+            (click)="switchUser('SALES')"
+            title="Switch to Sales Representative (Sarah Jenkins)"
+          >
+            Sales
+          </button>
+          <button
+            type="button"
+            class="btn py-1 px-2 fw-semibold"
+            [class.btn-danger]="currentRole() === 'ADMIN'"
+            [class.btn-outline-secondary]="currentRole() !== 'ADMIN'"
+            (click)="switchUser('ADMIN')"
+            title="Switch to Compliance Admin (Elena Rostova)"
+          >
+            Admin
+          </button>
+          <button
+            type="button"
+            class="btn py-1 px-2 fw-semibold"
+            [class.btn-warning]="currentRole() === 'REVIEWER'"
+            [class.text-dark]="currentRole() === 'REVIEWER'"
+            [class.btn-outline-secondary]="currentRole() !== 'REVIEWER'"
+            (click)="switchUser('REVIEWER')"
+            title="Switch to Risk Reviewer (Marcus Vance)"
+          >
+            Reviewer
+          </button>
+        </div>
+      </div>
+
       <!-- 401 Refresh Mutex Demo Button -->
       <button
         type="button"
@@ -77,17 +121,16 @@
         title="Fires 3 concurrent requests with an expired token to test the Mutex Token Refresh queue"
       >
         <i class="bi bi-arrow-repeat"></i>
-        <span class="d-none d-sm-inline">Test 401 Mutex</span>
+        <span class="d-none d-md-inline">Test 401 Mutex</span>
       </button>
 
-      <!-- Active Persona Switcher Dropdown -->
-      <div class="dropdown">
+      <!-- Active User Profile Dropdown Menu -->
+      <div class="dropdown position-relative">
         <button
-          class="btn btn-sm btn-outline-light dropdown-toggle d-flex align-items-center gap-2 px-2 py-1"
+          class="btn btn-sm btn-outline-light d-flex align-items-center gap-2 px-2 py-1"
           type="button"
-          id="userRoleMenu"
-          data-bs-toggle="dropdown"
-          aria-expanded="false"
+          (click)="toggleDropdown()"
+          [attr.aria-expanded]="isDropdownOpen()"
         >
           <div class="user-avatar text-bg-secondary rounded-circle d-flex align-items-center justify-content-center">
             <i class="bi bi-person-fill"></i>
@@ -106,40 +149,63 @@
               </span>
             </div>
           </div>
+          <i class="bi bi-chevron-down small text-light-50"></i>
         </button>
 
-        <ul class="dropdown-menu dropdown-menu-end shadow p-2" aria-labelledby="userRoleMenu" style="min-width: 260px">
-          <li class="dropdown-header text-uppercase fs-8 text-secondary fw-bold px-2 mb-1">
-            Switch Evaluation Persona
-          </li>
+        <!-- Dropdown Menu items -->
+        @if (isDropdownOpen()) {
+          <!-- Transparent Backdrop to close on click outside -->
+          <div class="dropdown-backdrop position-fixed top-0 start-0 w-100 h-100" (click)="closeDropdown()" style="z-index: 1050"></div>
 
-          @for (item of roles; track item.role) {
+          <ul
+            class="dropdown-menu dropdown-menu-end shadow p-2 show position-absolute end-0 mt-2"
+            style="min-width: 280px; z-index: 1060"
+          >
+            <li class="dropdown-header text-uppercase fs-8 text-secondary fw-bold px-2 mb-1">
+              Active Evaluation Persona
+            </li>
+
+            @for (item of roles; track item.role) {
+              <li>
+                <button
+                  type="button"
+                  class="dropdown-item rounded d-flex align-items-center justify-content-between py-2 px-2 mb-1"
+                  [class.active]="currentRole() === item.role"
+                  (click)="switchUser(item.role)"
+                >
+                  <div>
+                    <div class="fw-semibold">{{ item.name }}</div>
+                    <div class="small text-muted">{{ item.title }}</div>
+                  </div>
+                  <span class="badge {{ item.badgeClass }} ms-2">{{ item.role }}</span>
+                </button>
+              </li>
+            }
+
+            <li><hr class="dropdown-divider my-2" /></li>
+            <li>
+              <a
+                routerLink="/login"
+                class="dropdown-item rounded d-flex align-items-center gap-2 py-2 px-2 text-primary"
+                (click)="closeDropdown()"
+              >
+                <i class="bi bi-person-switch"></i>
+                <span>Open Dedicated Login Screen</span>
+              </a>
+            </li>
             <li>
               <button
                 type="button"
-                class="dropdown-item rounded d-flex align-items-center justify-content-between py-2 px-2 mb-1"
-                [class.active]="currentRole() === item.role"
-                (click)="switchUser(item.role)"
+                class="dropdown-item rounded d-flex align-items-center gap-2 py-2 px-2 text-danger"
+                (click)="logout()"
               >
-                <div>
-                  <div class="fw-semibold">{{ item.name }}</div>
-                  <div class="small text-muted">{{ item.title }}</div>
-                </div>
-                <span class="badge {{ item.badgeClass }} ms-2">{{ item.role }}</span>
+                <i class="bi bi-box-arrow-right"></i>
+                <span>Sign Out</span>
               </button>
             </li>
-          }
-
-          <li><hr class="dropdown-divider my-2" /></li>
-          <li class="px-2">
-            <div class="small text-muted">
-              <i class="bi bi-info-circle me-1"></i>
-              Switching roles reactively toggles UI controls, route permissions, and sensitive reveal access.
-            </div>
-          </li>
-        </ul>
+          </ul>
+        }
       </div>
     </div>
   </div>
 </header>
-

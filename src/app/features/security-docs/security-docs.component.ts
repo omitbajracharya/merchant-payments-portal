@@ -28,13 +28,13 @@ export class SecurityDocsComponent {
       threatMitigated: 'Eliminates Cross-Site Scripting (XSS) and remote script injections.',
     },
     {
-      directive: "connect-src 'self' https://api.paygate.io",
-      purpose: 'Restricts fetch/XHR network destinations to trusted underwriting APIs.',
+      directive: "connect-src 'self' https://api.paygate.io http://localhost:3000 ws://localhost:3000",
+      purpose: 'Restricts fetch/XHR and Socket.IO WebSocket destinations to trusted underwriting endpoints.',
       threatMitigated: 'Stops malicious exfiltration of sensitive card or banking data (Magecart).',
     },
     {
-      directive: "frame-ancestors 'none'",
-      purpose: 'Prohibits embedding this application in iframes on third-party sites.',
+      directive: "frame-ancestors 'none' (HTTP Header)",
+      purpose: 'Prohibits embedding this application in iframes on third-party sites (Enforced via HTTP response header).',
       threatMitigated: 'Defeats Clickjacking and UI redressing attacks.',
     },
     {

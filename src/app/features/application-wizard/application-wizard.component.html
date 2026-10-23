@@ -215,7 +215,7 @@
                 [class.is-invalid]="wizardForm.get('businessDetails.websiteUrl')?.touched && wizardForm.get('businessDetails.websiteUrl')?.invalid"
               />
               @if (wizardForm.get('businessDetails.websiteUrl')?.touched && wizardForm.get('businessDetails.websiteUrl')?.invalid) {
-                <div class="invalid-feedback">Valid URL is required (e.g. https://domain.com).</div>
+                <div class="invalid-feedback">Valid URL is required (e.g. omit.com.np or https://domain.com).</div>
               }
             </div>
 
@@ -240,7 +240,16 @@
               <div class="row g-3">
                 <div class="col-12 col-md-8">
                   <label class="form-label small">Street Address <span class="text-danger">*</span></label>
-                  <input type="text" class="form-control form-control-sm" formControlName="street" placeholder="123 Financial Way" />
+                  <input
+                    type="text"
+                    class="form-control form-control-sm"
+                    formControlName="street"
+                    placeholder="123 Financial Way"
+                    [class.is-invalid]="wizardForm.get('businessDetails.address.street')?.touched && wizardForm.get('businessDetails.address.street')?.invalid"
+                  />
+                  @if (wizardForm.get('businessDetails.address.street')?.touched && wizardForm.get('businessDetails.address.street')?.invalid) {
+                    <div class="invalid-feedback">Street address is required.</div>
+                  }
                 </div>
                 <div class="col-12 col-md-4">
                   <label class="form-label small">Suite / Unit</label>
@@ -248,15 +257,43 @@
                 </div>
                 <div class="col-12 col-md-5">
                   <label class="form-label small">City <span class="text-danger">*</span></label>
-                  <input type="text" class="form-control form-control-sm" formControlName="city" placeholder="San Francisco" />
+                  <input
+                    type="text"
+                    class="form-control form-control-sm"
+                    formControlName="city"
+                    placeholder="San Francisco"
+                    [class.is-invalid]="wizardForm.get('businessDetails.address.city')?.touched && wizardForm.get('businessDetails.address.city')?.invalid"
+                  />
+                  @if (wizardForm.get('businessDetails.address.city')?.touched && wizardForm.get('businessDetails.address.city')?.invalid) {
+                    <div class="invalid-feedback">City is required.</div>
+                  }
                 </div>
                 <div class="col-6 col-md-3">
-                  <label class="form-label small">State (2-letter) <span class="text-danger">*</span></label>
-                  <input type="text" class="form-control form-control-sm text-uppercase" formControlName="state" maxlength="2" placeholder="CA" />
+                  <label class="form-label small">State / Province <span class="text-danger">*</span></label>
+                  <input
+                    type="text"
+                    class="form-control form-control-sm text-uppercase"
+                    formControlName="state"
+                    maxlength="10"
+                    placeholder="e.g. CA or Bagmati"
+                    [class.is-invalid]="wizardForm.get('businessDetails.address.state')?.touched && wizardForm.get('businessDetails.address.state')?.invalid"
+                  />
+                  @if (wizardForm.get('businessDetails.address.state')?.touched && wizardForm.get('businessDetails.address.state')?.invalid) {
+                    <div class="invalid-feedback">State or province code is required.</div>
+                  }
                 </div>
                 <div class="col-6 col-md-4">
                   <label class="form-label small">Postal / ZIP Code <span class="text-danger">*</span></label>
-                  <input type="text" class="form-control form-control-sm" formControlName="postalCode" placeholder="94105" />
+                  <input
+                    type="text"
+                    class="form-control form-control-sm"
+                    formControlName="postalCode"
+                    placeholder="e.g. 94105 or 1234"
+                    [class.is-invalid]="wizardForm.get('businessDetails.address.postalCode')?.touched && wizardForm.get('businessDetails.address.postalCode')?.invalid"
+                  />
+                  @if (wizardForm.get('businessDetails.address.postalCode')?.touched && wizardForm.get('businessDetails.address.postalCode')?.invalid) {
+                    <div class="invalid-feedback">Postal / ZIP code must be 4 to 10 alphanumeric characters (e.g. 1234 or 94105).</div>
+                  }
                 </div>
               </div>
             </div>
@@ -411,6 +448,36 @@
                 [class.is-invalid]="wizardForm.get('bankingDetails.routingNumber')?.touched && wizardForm.get('bankingDetails.routingNumber')?.invalid"
               />
               <div class="form-text small">Validated via official Federal Reserve modulus 10 weighted checksum.</div>
+              <div class="mt-1 d-flex flex-wrap align-items-center gap-1">
+                <span class="text-muted small">Valid examples (click to fill):</span>
+                <button
+                  type="button"
+                  class="btn btn-sm btn-outline-primary py-0 px-2 font-monospace"
+                  style="font-size: 0.75rem"
+                  (click)="setSampleRoutingNumber('121000358')"
+                  title="Click to fill Bank of America routing number"
+                >
+                  121000358 (BofA)
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-sm btn-outline-secondary py-0 px-2 font-monospace"
+                  style="font-size: 0.75rem"
+                  (click)="setSampleRoutingNumber('021000021')"
+                  title="Click to fill Chase routing number"
+                >
+                  021000021 (Chase)
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-sm btn-outline-secondary py-0 px-2 font-monospace"
+                  style="font-size: 0.75rem"
+                  (click)="setSampleRoutingNumber('111000025')"
+                  title="Click to fill Wells Fargo routing number"
+                >
+                  111000025 (Wells)
+                </button>
+              </div>
               @if (wizardForm.get('bankingDetails.routingNumber')?.touched && wizardForm.get('bankingDetails.routingNumber')?.errors; as errs) {
                 <div class="invalid-feedback">
                   @if (errs['required']) { Routing number is required. }

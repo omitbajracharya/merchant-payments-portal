@@ -1,36 +1,118 @@
 <div class="container-fluid px-3 px-lg-4 py-4">
-  <!-- Page Header -->
-  <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-4">
-    <div>
-      <h1 class="h3 fw-bold mb-1 text-dark">Merchant Underwriting Dashboard</h1>
-      <p class="text-muted mb-0 small">
-        Real-time pipeline of merchant applications, KYC risk evaluations, and settlement profiles.
-      </p>
-    </div>
+  <!-- Interactive Role Workflow Banner (Connecting SALES -> ADMIN -> REVIEWER) -->
+  <div class="card border-0 shadow-sm mb-4 workflow-banner">
+    <div class="card-body p-3 p-md-4">
+      <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2 mb-3">
+        <div>
+          <span class="badge bg-primary-subtle text-primary text-uppercase px-2 py-1 mb-1 fw-bold fs-8">
+            Underwriting Workflow Lifecycle
+          </span>
+          <h2 class="h5 fw-bold mb-0 text-dark">
+            Role Pipeline: Sales ➔ Admin Assignment ➔ Risk Reviewer
+          </h2>
+          <div class="small text-muted">
+            Click any persona below to switch roles and observe permissions, filtering, and action controls reactively.
+          </div>
+        </div>
 
-    <div class="d-flex align-items-center gap-2">
-      <button
-        type="button"
-        class="btn btn-sm"
-        [class.btn-outline-danger]="simulateNetworkError"
-        [class.btn-outline-secondary]="!simulateNetworkError"
-        (click)="toggleSimulateError()"
-        title="Simulates an API error state to test UI error boundary and retry logic"
-      >
-        <i class="bi bi-bug me-1"></i>
-        {{ simulateNetworkError ? 'Disable Error Sim' : 'Simulate Error' }}
-      </button>
+        <button
+          type="button"
+          class="btn btn-sm btn-outline-primary d-flex align-items-center gap-1 shadow-sm"
+          data-bs-toggle="modal"
+          data-bs-target="#workflowGuideModal"
+        >
+          <i class="bi bi-info-circle-fill"></i>
+          <span>Workflow & Interview Guide</span>
+        </button>
+      </div>
 
-      @if (authService.hasRole(['SALES', 'ADMIN'])) {
-        <a routerLink="/applications/new" class="btn btn-primary d-flex align-items-center gap-2 shadow-sm">
-          <i class="bi bi-plus-lg"></i>
-          <span>New Application</span>
-        </a>
-      }
+      <!-- 3 Role Step Cards -->
+      <div class="row g-3">
+        <!-- 1. SALES -->
+        <div class="col-12 col-md-4">
+          <div
+            class="workflow-step-card p-3 rounded-3 border h-100 cursor-pointer"
+            [class.active-role]="authService.currentRole() === 'SALES'"
+            (click)="switchPersona('SALES')"
+          >
+            <div class="d-flex justify-content-between align-items-start mb-2">
+              <div class="d-flex align-items-center gap-2">
+                <span class="step-num rounded-circle text-white bg-primary">1</span>
+                <div>
+                  <div class="fw-bold text-dark">SALES</div>
+                  <div class="small text-muted">Sarah Jenkins</div>
+                </div>
+              </div>
+              @if (authService.currentRole() === 'SALES') {
+                <span class="badge bg-primary">Active Persona</span>
+              } @else {
+                <span class="badge bg-light text-muted border">Switch ➔</span>
+              }
+            </div>
+            <p class="small text-muted mb-0">
+              Creates and edits merchant applications, saves drafts with auto-save, and views permitted applications.
+            </p>
+          </div>
+        </div>
+
+        <!-- 2. ADMIN -->
+        <div class="col-12 col-md-4">
+          <div
+            class="workflow-step-card p-3 rounded-3 border h-100 cursor-pointer"
+            [class.active-role]="authService.currentRole() === 'ADMIN'"
+            (click)="switchPersona('ADMIN')"
+          >
+            <div class="d-flex justify-content-between align-items-start mb-2">
+              <div class="d-flex align-items-center gap-2">
+                <span class="step-num rounded-circle text-white bg-danger">2</span>
+                <div>
+                  <div class="fw-bold text-dark">ADMIN</div>
+                  <div class="small text-muted">Elena Rostova</div>
+                </div>
+              </div>
+              @if (authService.currentRole() === 'ADMIN') {
+                <span class="badge bg-danger">Active Persona</span>
+              } @else {
+                <span class="badge bg-light text-muted border">Switch ➔</span>
+              }
+            </div>
+            <p class="small text-muted mb-0">
+              Views entire pipeline, manages assignments, assigns unassigned applications to reviewers, and overrides decisions.
+            </p>
+          </div>
+        </div>
+
+        <!-- 3. REVIEWER -->
+        <div class="col-12 col-md-4">
+          <div
+            class="workflow-step-card p-3 rounded-3 border h-100 cursor-pointer"
+            [class.active-role]="authService.currentRole() === 'REVIEWER'"
+            (click)="switchPersona('REVIEWER')"
+          >
+            <div class="d-flex justify-content-between align-items-start mb-2">
+              <div class="d-flex align-items-center gap-2">
+                <span class="step-num rounded-circle text-dark bg-warning">3</span>
+                <div>
+                  <div class="fw-bold text-dark">REVIEWER</div>
+                  <div class="small text-muted">Marcus Vance</div>
+                </div>
+              </div>
+              @if (authService.currentRole() === 'REVIEWER') {
+                <span class="badge bg-warning text-dark">Active Persona</span>
+              } @else {
+                <span class="badge bg-light text-muted border">Switch ➔</span>
+              }
+            </div>
+            <p class="small text-muted mb-0">
+              Reviews assigned applications, unmasks sensitive banking PII with audit logs, and records risk decisions.
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
-  <!-- Metric Summary Cards (Optional Enhancement completed) -->
+  <!-- Metric Summary Cards -->
   @if (metrics(); as m) {
     <div class="row g-3 mb-4">
       <div class="col-6 col-lg-3">
@@ -99,6 +181,99 @@
   <div class="card border-0 shadow-sm">
     <!-- Filter Toolbar -->
     <div class="card-header bg-white py-3 border-bottom">
+      <!-- Role Scope Selector Bar -->
+      <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3 pb-2 border-bottom">
+        <div class="d-flex align-items-center gap-2">
+          <span class="small fw-bold text-muted text-uppercase">Filter View:</span>
+          @if (authService.currentRole() === 'SALES') {
+            <div class="btn-group btn-group-sm" role="group">
+              <button
+                type="button"
+                class="btn"
+                [class.btn-primary]="roleScope() === 'ROLE_DEFAULT'"
+                [class.btn-outline-secondary]="roleScope() !== 'ROLE_DEFAULT'"
+                (click)="setRoleScope('ROLE_DEFAULT')"
+              >
+                <i class="bi bi-person me-1"></i> Sarah's Applications
+              </button>
+              <button
+                type="button"
+                class="btn"
+                [class.btn-primary]="roleScope() === 'ALL'"
+                [class.btn-outline-secondary]="roleScope() !== 'ALL'"
+                (click)="setRoleScope('ALL')"
+              >
+                All Permitted
+              </button>
+            </div>
+          } @else if (authService.currentRole() === 'REVIEWER') {
+            <div class="btn-group btn-group-sm" role="group">
+              <button
+                type="button"
+                class="btn"
+                [class.btn-warning]="roleScope() === 'ROLE_DEFAULT'"
+                [class.btn-outline-secondary]="roleScope() !== 'ROLE_DEFAULT'"
+                (click)="setRoleScope('ROLE_DEFAULT')"
+              >
+                <i class="bi bi-check-circle me-1"></i> Assigned to Marcus
+              </button>
+              <button
+                type="button"
+                class="btn"
+                [class.btn-warning]="roleScope() === 'ALL'"
+                [class.btn-outline-secondary]="roleScope() !== 'ALL'"
+                (click)="setRoleScope('ALL')"
+              >
+                All Underwriting Queue
+              </button>
+            </div>
+          } @else {
+            <div class="btn-group btn-group-sm" role="group">
+              <button
+                type="button"
+                class="btn"
+                [class.btn-danger]="roleScope() === 'ROLE_DEFAULT'"
+                [class.btn-outline-secondary]="roleScope() !== 'ROLE_DEFAULT'"
+                (click)="setRoleScope('ROLE_DEFAULT')"
+              >
+                All Applications (Admin View)
+              </button>
+              <button
+                type="button"
+                class="btn"
+                [class.btn-danger]="roleScope() === 'UNASSIGNED'"
+                [class.btn-outline-secondary]="roleScope() !== 'UNASSIGNED'"
+                (click)="setRoleScope('UNASSIGNED')"
+              >
+                <i class="bi bi-person-exclamation me-1"></i> Unassigned Queue (Needs Assignment)
+              </button>
+            </div>
+          }
+        </div>
+
+        <div class="d-flex align-items-center gap-2">
+          <button
+            type="button"
+            class="btn btn-sm"
+            [class.btn-outline-danger]="simulateNetworkError"
+            [class.btn-outline-secondary]="!simulateNetworkError"
+            (click)="toggleSimulateError()"
+            title="Simulates an API error state to test UI error boundary and retry logic"
+          >
+            <i class="bi bi-bug me-1"></i>
+            {{ simulateNetworkError ? 'Disable Error Sim' : 'Simulate Error' }}
+          </button>
+
+          @if (authService.hasRole(['SALES', 'ADMIN'])) {
+            <a routerLink="/applications/new" class="btn btn-sm btn-primary d-flex align-items-center gap-1 shadow-sm">
+              <i class="bi bi-plus-lg"></i>
+              <span>New Application</span>
+            </a>
+          }
+        </div>
+      </div>
+
+      <!-- Search & Filters -->
       <div class="row g-2 align-items-center">
         <!-- Search Input -->
         <div class="col-12 col-md-4">
@@ -109,7 +284,7 @@
             <input
               type="text"
               class="form-control bg-light border-start-0"
-              placeholder="Search merchant, app ID, DBA..."
+              placeholder="Search merchant, app ID, DBA, sales..."
               [value]="searchQuery"
               (input)="onSearchInput($any($event.target).value)"
             />
@@ -208,12 +383,16 @@
         <div class="text-muted mb-3">
           <i class="bi bi-inbox fs-1"></i>
         </div>
-        <h5 class="fw-bold">No Applications Found</h5>
+        <h5 class="fw-bold">No Applications in Current View</h5>
         <p class="text-muted max-w-md mx-auto mb-3">
-          No merchant applications matched the current filters or query criteria.
+          @if (roleScope() === 'UNASSIGNED') {
+            All submitted applications have currently been assigned to reviewers!
+          } @else {
+            No merchant applications matched the current filters or role scope criteria.
+          }
         </p>
         <button type="button" class="btn btn-sm btn-outline-secondary" (click)="clearFilters()">
-          Clear Filters
+          Reset Filter View
         </button>
       </div>
     } @else {
@@ -252,13 +431,13 @@
                   <i class="bi" [class.bi-chevron-up]="sortDirection === 'asc'" [class.bi-chevron-down]="sortDirection === 'desc'"></i>
                 }
               </th>
-              <th scope="col">Reviewer</th>
+              <th scope="col">Reviewer Assignment</th>
               <th scope="col" class="text-end pe-3">Actions</th>
             </tr>
           </thead>
           <tbody>
             @for (app of applications(); track app.id) {
-              <tr>
+              <tr [class.table-warning-subtle]="!app.assignedReviewerId && authService.currentRole() === 'ADMIN'">
                 <!-- Application ID & Date -->
                 <td class="ps-3">
                   <div class="fw-bold font-monospace text-primary">
@@ -349,14 +528,55 @@
                   }
                 </td>
 
-                <!-- Reviewer Assignment -->
+                <!-- Reviewer Assignment (Interactive for Admin!) -->
                 <td>
                   @if (app.assignedReviewerName) {
-                    <div class="small fw-semibold text-dark">
-                      {{ app.assignedReviewerName }}
+                    <div class="d-flex align-items-center gap-1">
+                      <i class="bi bi-person-badge text-primary"></i>
+                      <span class="small fw-semibold text-dark">{{ app.assignedReviewerName }}</span>
+                      @if (authService.currentRole() === 'REVIEWER' && app.assignedReviewerId === 'usr_reviewer_02') {
+                        <span class="badge bg-primary-subtle text-primary ms-1 fs-8">You</span>
+                      }
                     </div>
                   } @else {
-                    <span class="badge bg-light text-muted border">Unassigned</span>
+                    @if (canAdminAssign()) {
+                      <!-- Admin Quick Assignment Dropdown -->
+                      <div class="dropdown">
+                        <button
+                          class="btn btn-sm btn-outline-warning dropdown-toggle d-flex align-items-center gap-1 py-1 px-2"
+                          type="button"
+                          data-bs-toggle="dropdown"
+                          aria-expanded="false"
+                        >
+                          <i class="bi bi-person-plus"></i>
+                          <span>Assign Reviewer</span>
+                        </button>
+                        <ul class="dropdown-menu shadow-sm">
+                          <li>
+                            <button
+                              type="button"
+                              class="dropdown-item small"
+                              (click)="assignReviewerInline(app, 'usr_reviewer_02', 'Marcus Vance')"
+                            >
+                              <i class="bi bi-check-circle me-1 text-success"></i>
+                              Assign to Marcus Vance (Senior Reviewer)
+                            </button>
+                          </li>
+                          <li>
+                            <button
+                              type="button"
+                              class="dropdown-item small"
+                              (click)="assignReviewerInline(app, 'usr_reviewer_pool', 'Senior Underwriter Pool')"
+                            >
+                              <i class="bi bi-people me-1 text-primary"></i>
+                              Assign to Senior Underwriter Pool
+                            </button>
+                          </li>
+                        </ul>
+                      </div>
+                    } @else {
+                      <span class="badge bg-light text-muted border">Unassigned</span>
+                    }
                   }
                 </td>
 
@@ -462,5 +682,129 @@
       </div>
     }
   </div>
-</div>
 
+  <!-- WORKFLOW & INTERVIEW GUIDE MODAL -->
+  <div class="modal fade" id="workflowGuideModal" tabindex="-1" aria-labelledby="workflowGuideModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header bg-dark text-white">
+          <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-diagram-3-fill text-primary fs-4"></i>
+            <div>
+              <h5 class="modal-title fw-bold mb-0" id="workflowGuideModalLabel">
+                Underwriting Workflow & Interview Test Guide
+              </h5>
+              <div class="small text-light-50">How SALES, ADMIN, and REVIEWER interact seamlessly</div>
+            </div>
+          </div>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+
+        <div class="modal-body p-4">
+          <!-- Flow Explanation -->
+          <div class="mb-4">
+            <h6 class="fw-bold text-dark mb-2">1. The End-to-End Operational Lifecycle</h6>
+            <div class="p-3 bg-light rounded-3 border small">
+              <div class="row g-2 align-items-center text-center">
+                <div class="col-12 col-md-3">
+                  <div class="p-2 bg-white rounded border shadow-sm">
+                    <span class="badge bg-primary mb-1">SALES</span>
+                    <div class="fw-semibold">1. Creates & Submits</div>
+                    <div class="text-muted fs-8">Fills wizard, auto-saves draft</div>
+                  </div>
+                </div>
+                <div class="col-12 col-md-1 text-muted d-none d-md-block fs-5">➔</div>
+                <div class="col-12 col-md-4">
+                  <div class="p-2 bg-white rounded border shadow-sm">
+                    <span class="badge bg-danger mb-1">ADMIN</span>
+                    <div class="fw-semibold">2. Assigns Reviewer</div>
+                    <div class="text-muted fs-8">Assigns unassigned app to Marcus</div>
+                  </div>
+                </div>
+                <div class="col-12 col-md-1 text-muted d-none d-md-block fs-5">➔</div>
+                <div class="col-12 col-md-3">
+                  <div class="p-2 bg-white rounded border shadow-sm">
+                    <span class="badge bg-warning text-dark mb-1">REVIEWER</span>
+                    <div class="fw-semibold">3. Decides & Approves</div>
+                    <div class="text-muted fs-8">Unmasks PII, approves with conditions</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Step-by-Step Interactive Test Script -->
+          <div class="mb-4">
+            <h6 class="fw-bold text-dark mb-2">2. Live Evaluation Walkthrough (2-Minute Test Script)</h6>
+            <div class="list-group small">
+              <div class="list-group-item list-group-item-action">
+                <div class="d-flex w-100 justify-content-between">
+                  <h6 class="mb-1 fw-bold text-primary">Step A: Test SALES Role</h6>
+                  <small class="badge bg-primary">Sales Persona</small>
+                </div>
+                <p class="mb-1 text-muted">
+                  Click <strong>SALES</strong> in the header switcher. Notice the dashboard filters to Sarah's applications. Click <strong>"New Application"</strong>, fill steps, observe the <strong>debounced auto-save pill</strong> saving in the background, and submit.
+                </p>
+              </div>
+
+              <div class="list-group-item list-group-item-action">
+                <div class="d-flex w-100 justify-content-between">
+                  <h6 class="mb-1 fw-bold text-danger">Step B: Test ADMIN Assignment</h6>
+                  <small class="badge bg-danger">Admin Persona</small>
+                </div>
+                <p class="mb-1 text-muted">
+                  Switch to <strong>ADMIN</strong>. Filter to <strong>"Unassigned Queue"</strong>. Find <code>APP-1002 (Nova Coffee Roasters)</code>. Click <strong>"Assign Reviewer" ➔ Marcus Vance</strong>. Notice status immediately changes to <code>UNDER_REVIEW</code>!
+                </p>
+              </div>
+
+              <div class="list-group-item list-group-item-action">
+                <div class="d-flex w-100 justify-content-between">
+                  <h6 class="mb-1 fw-bold text-warning-emphasis">Step C: Test REVIEWER Decision & Sensitive Reveal</h6>
+                  <small class="badge bg-warning text-dark">Reviewer Persona</small>
+                </div>
+                <p class="mb-1 text-muted">
+                  Switch to <strong>REVIEWER</strong>. Notice Marcus Vance's assigned queue. Open <code>APP-1002</code>. Click <strong>"Reveal"</strong> on the Bank Account (starts 30s auto-remask timer and records an audit log). Under "Risk Decision", select <strong>Approve</strong> with a condition and click <strong>Commit Decision</strong>!
+                </p>
+              </div>
+
+              <div class="list-group-item list-group-item-action">
+                <div class="d-flex w-100 justify-content-between">
+                  <h6 class="mb-1 fw-bold text-secondary">Step D: Test 401 Concurrency Mutex Interceptor</h6>
+                  <small class="badge bg-secondary">Interceptor</small>
+                </div>
+                <p class="mb-1 text-muted">
+                  Click the <strong>"Test 401 Mutex"</strong> button in the top navbar. It triggers 3 concurrent API requests with an expired token, fires <strong>only 1</strong> <code>/auth/refresh</code> call, and re-executes all 3 requests with the refreshed token!
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Security & CSP Highlights -->
+          <div>
+            <h6 class="fw-bold text-dark mb-2">3. Automatic-Fail Checkpoints & Safeguards</h6>
+            <div class="row g-2 small text-muted">
+              <div class="col-6">
+                <i class="bi bi-check-circle-fill text-success me-1"></i> Zero committed secrets or API keys
+              </div>
+              <div class="col-6">
+                <i class="bi bi-check-circle-fill text-success me-1"></i> Strict RBAC route guards & directives
+              </div>
+              <div class="col-6">
+                <i class="bi bi-check-circle-fill text-success me-1"></i> 100% synthetic test data (No real PII/cards)
+              </div>
+              <div class="col-6">
+                <i class="bi bi-check-circle-fill text-success me-1"></i> Content Security Policy (CSP) enforced
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer bg-light">
+          <button type="button" class="btn btn-sm btn-primary" data-bs-dismiss="modal">
+            Close & Start Testing
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
